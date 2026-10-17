@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+      http://www.kde.org/standards/kcfg/1.0/kcfg.xsd" >
+  <kcfgfile name=""/>
+
+  <group name="General">
+
+    <entry name="appsIconSize" type="Enum">
+      <label></label>
+      <default>1</default>
+    </entry>
+    <entry name="docsIconSize" type="Enum">
+      <label></label>
+      <default>1</default>
+    </entry>
+    <entry name="displayPosition" type="Enum">
+      <label>Position.</label>
+      <default>2</default>
+    </entry>
+
+    <entry name="icon" type="String">
+      <default>start-here-kde</default>
+    </entry>
+    <entry name="useCustomButtonImage" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="customButtonImage" type="Url">
+      <default></default>
+    </entry>
+
+    <entry name="showFilterList" type="Bool">
+      <default>true</default>
+    </entry>
+
+    <entry name="appNameFormat" type="Int">
+      <default>0</default>
+    </entry>
+    <entry name="limitDepth" type="Bool">
+      <default>false</default>
+    </entry>
+
+    <entry name="numberColumns" type="Int">
+    <default>6</default>
+    </entry>
+
+    <entry name="numberRows" type="Int">
+    <default>4</default>
+    </entry>
+
+    <entry name="favoriteApps" type="StringList">
+      <default>preferred://browser,kontact.desktop,systemsettings.desktop,org.kde.dolphin.desktop,ktp-contactlist.desktop,org.kde.kate.desktop</default>
+    </entry>
+    <entry name="favoriteSystemActions" type="StringList">
+         <label>List of system action favorites.</label>
+         <default>logout,reboot,shutdown</default>
+    </entry>
+    <entry name="hiddenApplications" type="StringList">
+      <default></default>
+    </entry>
+
+    <entry name="useExtraRunners" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="labels2lines" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="extraRunners" type="StringList">
+      <default>bookmarks,baloosearch</default>
+    </entry>
+    <entry name="alignResultsToBottom" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="switchCategoriesOnHover" type="Bool">
+      <label>Whether to switch between menu categories by hovering them.</label>
+      <default>true</default>
+    </entry>
+
+    <entry name="removeApplicationCommand" type="String">
+      <default>muon-discover --application</default>
+    </entry>
+    <entry name="showAtCenter" type="Bool">
+       <default>true</default>
+   </entry>   
+    <entry name="favoritesPortedToKAstats" type="Bool">
+      <label>Are the favorites ported to use KActivitiesStats to allow per-activity favorites</label>
+      <default>false</default>
+    </entry>
+
+    <entry name="viewUser" type="Bool">
+    <default>true</default>
+    </entry>
+
+    <entry name="allAppsViewMode" type="Int">
+      <default>0</default>
+    </entry>
+
+    <entry name="allAppsSortMode" type="Int">
+      <default>0</default>
+    </entry>
+
+    <entry name="showRecentDocs" type="Bool">
+      <default>true</default>
+    </entry>
+
+    <entry name="showRecentApps" type="Bool">
+      <default>false</default>
+    </entry>
+
+    <entry name="enableShellRunner" type="Bool">
+      <default>true</default>
+    </entry>
+
+    <entry name="showSleepButton" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showRestartButton" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showShutdownButton" type="Bool">
+      <default>true</default>
+    </entry>
+
+    <entry name="pinnedFolders" type="String">
+      <default></default>
+    </entry>
+
+    <entry name="showQuickActions" type="Bool">
+      <default>false</default>
+    </entry>
+
+    <entry name="appLaunchCounts" type="String">
+      <default></default>
+    </entry>
+
+    <entry name="allAppsFolders" type="String">
+      <default></default>
+    </entry>
+
+    <entry name="knownApps" type="String">
+      <default></default>
+    </entry>
+
+    <entry name="newApps" type="String">
+      <default></default>
+    </entry>
+
+    <entry name="notifyNewApps" type="Bool">
+      <default>true</default>
+    </entry>
+
+    <!-- Fenestra : volet KDE Connect actif (bouton interrupteur) -->
+    <entry name="kdeConnectPanelOn" type="Bool">
+      <default>false</default>
+    </entry>
+
+    <!-- Fenestra : option du volet : garder le volet ouvert d'une ouverture du menu à l'autre -->
+    <entry name="kdeConnectMemoriser" type="Bool">
+      <default>true</default>
+    </entry>
+  </group>
+</kcfg>

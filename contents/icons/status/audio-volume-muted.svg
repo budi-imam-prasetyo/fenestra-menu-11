@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- audio-volume-muted-kde-connect : d'après Phosphor Icons « speaker » (phosphoricons.com), licence MIT, croix remplacée par une barre en travers, modifié -->
+<svg width="22" height="22" viewBox="18 8 240 240" xmlns="http://www.w3.org/2000/svg">
+  <defs><style id="current-color-scheme" type="text/css">.ColorScheme-Text { color:#232629; }</style></defs>
+  <g class="ColorScheme-Text" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M32,88 H80 V168 H32 A8,8 0 0 1 24,160 V96 A8,8 0 0 1 32,88 Z"/>
+    <path d="M80,88 L152,32 V224 L80,168"/>
+    <path d="M28,36 L212,220" stroke-width="12"/>
+  </g>
+</svg>

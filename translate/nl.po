@@ -1,0 +1,813 @@
+# Fenestra Menu 11 — Dutch translation
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Machine-assisted translation — to be reviewed by a native speaker.
+msgid ""
+msgstr ""
+"Project-Id-Version: Fenestra Menu 11 1.0\n"
+"Report-Msgid-Bugs-To: https://github.com/naykkalak/fenestra-menu-11/issues\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: nl\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: contents/ui/ConfigGeneral.qml:75
+msgid "Icon:"
+msgstr "Pictogram:"
+
+#: contents/ui/ConfigGeneral.qml:155
+msgctxt "@item:inmenu Open icon chooser dialog"
+msgid "Choose…"
+msgstr "Kiezen…"
+
+#: contents/ui/ConfigGeneral.qml:160
+msgctxt "@item:inmenu Reset icon to default"
+msgid "Clear Icon"
+msgstr "Pictogram wissen"
+
+#: contents/ui/ConfigGeneral.qml:176
+msgid "Apps icon size:"
+msgstr "Grootte app-pictogrammen:"
+
+#: contents/ui/ConfigGeneral.qml:178 contents/ui/ConfigGeneral.qml:185
+msgid "Small"
+msgstr "Klein"
+
+#: contents/ui/ConfigGeneral.qml:178 contents/ui/ConfigGeneral.qml:185
+msgid "Medium"
+msgstr "Middel"
+
+#: contents/ui/ConfigGeneral.qml:178 contents/ui/ConfigGeneral.qml:185
+msgid "Large"
+msgstr "Groot"
+
+#: contents/ui/ConfigGeneral.qml:178 contents/ui/ConfigGeneral.qml:185
+msgid "Huge"
+msgstr "Zeer groot"
+
+#: contents/ui/ConfigGeneral.qml:183
+msgid "Docs icon size:"
+msgstr "Grootte documentpictogrammen:"
+
+#: contents/ui/ConfigGeneral.qml:191
+msgid "Menu position"
+msgstr "Menupositie"
+
+#: contents/ui/ConfigGeneral.qml:194
+msgid "Default"
+msgstr "Standaard"
+
+#: contents/ui/ConfigGeneral.qml:195
+msgid "Center"
+msgstr "Midden"
+
+#: contents/ui/ConfigGeneral.qml:196
+msgid "Center bottom"
+msgstr "Midden onder"
+
+#: contents/ui/ConfigGeneral.qml:204
+msgid "Show labels in two lines"
+msgstr "Namen op twee regels tonen"
+
+#: contents/ui/ConfigGeneral.qml:214
+msgid "Number of columns"
+msgstr "Aantal kolommen"
+
+#: contents/ui/ConfigGeneral.qml:222
+msgid "Number of rows"
+msgstr "Aantal rijen"
+
+#: contents/ui/ConfigGeneral.qml:227
+msgid "All Apps"
+msgstr "Alle apps"
+
+#: contents/ui/ConfigGeneral.qml:232
+msgid "Recent Documents:"
+msgstr "Recente documenten:"
+
+#: contents/ui/ConfigGeneral.qml:233
+msgid "Show Recent Documents section"
+msgstr "Sectie Recente documenten tonen"
+
+#: contents/ui/ConfigGeneral.qml:239
+msgid "KDE Connect"
+msgstr "KDE Connect"
+
+#: contents/ui/ConfigGeneral.qml:244
+msgid "Mobile panel:"
+msgstr "Mobiel paneel:"
+
+#: contents/ui/ConfigGeneral.qml:245
+msgid "Keep the mobile panel open between menu openings"
+msgstr "Mobiel paneel open houden tussen het openen van het menu"
+
+#: contents/ui/ConfigGeneral.qml:250 contents/ui/KdeConnectPanel.qml:959
+msgid "Search"
+msgstr "Zoeken"
+
+#: contents/ui/ConfigGeneral.qml:255
+msgid "Home page:"
+msgstr "Startpagina:"
+
+#: contents/ui/ConfigGeneral.qml:256
+msgid "Show recently opened apps"
+msgstr "Recent geopende apps tonen"
+
+#: contents/ui/ConfigGeneral.qml:261
+msgid "Enable shell command runner ( > cmd )"
+msgstr "Uitvoeren van shell-opdrachten inschakelen ( > cmd )"
+
+#: contents/ui/ConfigGeneral.qml:266
+msgid "Show Quick Actions bar (Screenshot, Lock, Terminal…)"
+msgstr "Balk met snelle acties tonen (schermafdruk, vergrendelen, terminal…)"
+
+#: contents/ui/ConfigGeneral.qml:271
+msgid "Footer power buttons"
+msgstr "Aan/uit-knoppen in de voettekst"
+
+#: contents/ui/ConfigGeneral.qml:276
+msgid "Show:"
+msgstr "Tonen:"
+
+#: contents/ui/ConfigGeneral.qml:277
+msgid "Sleep / Suspend"
+msgstr "Slaapstand"
+
+#: contents/ui/ConfigGeneral.qml:282 contents/ui/Footer.qml:767
+msgid "Restart"
+msgstr "Opnieuw opstarten"
+
+#: contents/ui/ConfigGeneral.qml:287
+msgid "Shutdown"
+msgstr "Afsluiten"
+
+#: contents/ui/ConfigGeneral.qml:294
+msgid "Unhide all hidden applications"
+msgstr "Alle verborgen toepassingen weer tonen"
+
+#: contents/ui/ConfigGeneral.qml:297
+msgid "Unhidden!"
+msgstr "Weer zichtbaar!"
+
+#: contents/ui/Footer.qml:290
+msgid "Sign out"
+msgstr "Afmelden"
+
+#: contents/ui/Footer.qml:388
+msgid "Other users"
+msgstr "Andere gebruikers"
+
+#: contents/ui/Footer.qml:486
+msgid "No other users"
+msgstr "Geen andere gebruikers"
+
+#: contents/ui/Footer.qml:550
+msgid "Local account"
+msgstr "Lokaal account"
+
+#: contents/ui/Footer.qml:558
+msgid "Manage my account"
+msgstr "Mijn account beheren"
+
+#: contents/ui/Footer.qml:636
+msgid "Power"
+msgstr "Aan/uit"
+
+#: contents/ui/Footer.qml:683
+msgid "Lock"
+msgstr "Vergrendelen"
+
+#: contents/ui/Footer.qml:711
+msgid "Sleep"
+msgstr "Slaapstand"
+
+#: contents/ui/Footer.qml:739
+msgid "Shut down"
+msgstr "Afsluiten"
+
+#: contents/ui/ItemGridDelegate.qml:195
+msgid "New"
+msgstr "Nieuw"
+
+#: contents/ui/ItemGridDelegateColumns.qml:243
+msgid "Unpin from Start"
+msgstr "Losmaken van Start"
+
+#: contents/ui/ItemGridDelegateColumns.qml:243
+msgid "Pin to Start"
+msgstr "Vastmaken aan Start"
+
+#: contents/ui/KdeConnectPanel.qml:178
+msgid "The phone is ringing…"
+msgstr "De telefoon gaat over…"
+
+#: contents/ui/KdeConnectPanel.qml:179
+msgid "Hello from the PC"
+msgstr "Hallo vanaf de pc"
+
+#: contents/ui/KdeConnectPanel.qml:179
+msgid "Ping sent"
+msgstr "Ping verzonden"
+
+#: contents/ui/KdeConnectPanel.qml:180
+msgid "Clipboard sent"
+msgstr "Klembord verzonden"
+
+#: contents/ui/KdeConnectPanel.qml:188
+msgid "Opening the phone's files…"
+msgstr "Bestanden van de telefoon worden geopend…"
+
+#: contents/ui/KdeConnectPanel.qml:198
+msgid "File sent"
+msgid_plural "%1 files sent"
+msgstr[0] "Bestand verzonden"
+msgstr[1] "%1 bestanden verzonden"
+
+#: contents/ui/KdeConnectPanel.qml:207
+msgid "Link sent: it opens on the phone"
+msgstr "Link verzonden: hij wordt op de telefoon geopend"
+
+#: contents/ui/KdeConnectPanel.qml:210
+msgid "Text sent"
+msgstr "Tekst verzonden"
+
+#: contents/ui/KdeConnectPanel.qml:227
+msgid "Take the photo on the phone: it will open here."
+msgstr "Maak de foto met de telefoon: hij wordt hier geopend."
+
+#: contents/ui/KdeConnectPanel.qml:328
+msgid "Reply sent"
+msgstr "Antwoord verzonden"
+
+#: contents/ui/KdeConnectPanel.qml:401
+msgid "Choose a contact from the list or type a number"
+msgstr "Kies een contact uit de lijst of typ een nummer"
+
+#: contents/ui/KdeConnectPanel.qml:405
+msgid "Sending SMS…"
+msgstr "Sms wordt verzonden…"
+
+#: contents/ui/KdeConnectPanel.qml:796
+msgid "Send to phone"
+msgstr "Naar telefoon sturen"
+
+#: contents/ui/KdeConnectPanel.qml:831
+msgid "✓ SMS handed over to the phone"
+msgstr "✓ Sms doorgegeven aan de telefoon"
+
+#: contents/ui/KdeConnectPanel.qml:836
+msgid "✗ Failed: SMS not handed over to the phone"
+msgstr "✗ Mislukt: sms niet doorgegeven aan de telefoon"
+
+#: contents/ui/KdeConnectPanel.qml:884
+msgid "Access your mobile device here"
+msgstr "Open hier uw mobiele apparaat"
+
+#: contents/ui/KdeConnectPanel.qml:894
+msgid "The qdbus tool was not found: unable to talk to KDE Connect."
+msgstr "Het programma qdbus is niet gevonden: geen verbinding met KDE Connect mogelijk."
+
+#: contents/ui/KdeConnectPanel.qml:895
+msgid "See your phone's battery, files and notifications right in the Start menu, thanks to KDE Connect."
+msgstr "Batterij, bestanden en meldingen van uw telefoon direct in het Startmenu, dankzij KDE Connect."
+
+#: contents/ui/KdeConnectPanel.qml:901
+msgid "Select your device"
+msgstr "Kies uw apparaat"
+
+#: contents/ui/KdeConnectPanel.qml:924
+msgid "Connect an iPhone"
+msgstr "Een iPhone verbinden"
+
+#: contents/ui/KdeConnectPanel.qml:924
+msgid "Connect an Android phone"
+msgstr "Een Android-telefoon verbinden"
+
+#: contents/ui/KdeConnectPanel.qml:936
+msgid "1. Install the KDE Connect app from the App Store.\n"
+msgstr "1. Installeer de app KDE Connect uit de App Store.\n"
+
+#: contents/ui/KdeConnectPanel.qml:937
+msgid "1. Install the KDE Connect app from the Play Store or F-Droid.\n"
+msgstr "1. Installeer de app KDE Connect uit de Play Store of F-Droid.\n"
+
+#: contents/ui/KdeConnectPanel.qml:938
+msgid "2. Connect the phone to the same Wi-Fi network as this PC (or connect this PC to the phone's hotspot).\n"
+msgstr "2. Verbind de telefoon met hetzelfde wifinetwerk als deze pc (of deze pc met de hotspot van de telefoon).\n"
+
+#: contents/ui/KdeConnectPanel.qml:939
+msgid "3. In the app, tap the name of this PC, then “Request pairing”.\n"
+msgstr "3. Tik in de app op de naam van deze pc en daarna op ‘Koppeling aanvragen’.\n"
+
+#: contents/ui/KdeConnectPanel.qml:940
+msgid "4. Accept the request that appears on this PC."
+msgstr "4. Accepteer het verzoek dat op deze pc verschijnt."
+
+#: contents/ui/KdeConnectPanel.qml:946
+msgid "On iPhone, KDE Connect offers fewer features than on Android."
+msgstr "Op de iPhone biedt KDE Connect minder functies dan op Android."
+
+#: contents/ui/KdeConnectPanel.qml:954
+msgid "Download"
+msgstr "Downloaden"
+
+#: contents/ui/KdeConnectPanel.qml:967
+msgid "< Back"
+msgstr "< Terug"
+
+#: contents/ui/KdeConnectPanel.qml:1024
+msgid "Connected"
+msgstr "Verbonden"
+
+#: contents/ui/KdeConnectPanel.qml:1024
+msgid "Offline"
+msgstr "Offline"
+
+#: contents/ui/KdeConnectPanel.qml:1081
+msgid "Refresh"
+msgstr "Vernieuwen"
+
+#: contents/ui/KdeConnectPanel.qml:1101
+msgid "Ring"
+msgstr "Laten overgaan"
+
+#: contents/ui/KdeConnectPanel.qml:1102
+msgid "Send files"
+msgstr "Bestanden sturen"
+
+#: contents/ui/KdeConnectPanel.qml:1103
+msgid "Browse"
+msgstr "Bladeren"
+
+#: contents/ui/KdeConnectPanel.qml:1104
+msgid "Clipboard"
+msgstr "Klembord"
+
+#: contents/ui/KdeConnectPanel.qml:1105
+msgid "Send a link"
+msgstr "Link sturen"
+
+#: contents/ui/KdeConnectPanel.qml:1106
+msgid "Take a photo"
+msgstr "Foto maken"
+
+#: contents/ui/KdeConnectPanel.qml:1107
+msgid "SMS"
+msgstr "Sms"
+
+#: contents/ui/KdeConnectPanel.qml:1108
+msgid "Ping"
+msgstr "Ping"
+
+#: contents/ui/KdeConnectPanel.qml:1109 contents/ui/MenuRepresentation.qml:2449
+msgid "Settings"
+msgstr "Instellingen"
+
+#: contents/ui/KdeConnectPanel.qml:1123
+msgid "To: %1"
+msgstr "Aan: %1"
+
+#: contents/ui/KdeConnectPanel.qml:1130
+msgid "Name or number"
+msgstr "Naam of nummer"
+
+#: contents/ui/KdeConnectPanel.qml:1130
+msgid "Phone number"
+msgstr "Telefoonnummer"
+
+#: contents/ui/KdeConnectPanel.qml:1212
+msgid "Message"
+msgstr "Bericht"
+
+#: contents/ui/KdeConnectPanel.qml:1231 contents/ui/KdeConnectPanel.qml:1261 contents/ui/MenuRepresentation.qml:3666 contents/ui/MenuRepresentation.qml:3791 contents/ui/MenuRepresentation.qml:4066 contents/ui/MenuRepresentation.qml:4141
+msgid "Cancel"
+msgstr "Annuleren"
+
+#: contents/ui/KdeConnectPanel.qml:1235 contents/ui/KdeConnectPanel.qml:1265
+msgid "Send"
+msgstr "Versturen"
+
+#: contents/ui/KdeConnectPanel.qml:1253
+msgid "Web link or text to send"
+msgstr "Weblink of tekst om te versturen"
+
+#: contents/ui/KdeConnectPanel.qml:1441
+msgid "The phone is offline: check that it is on the same network."
+msgstr "De telefoon is offline: controleer of hij op hetzelfde netwerk zit."
+
+#: contents/ui/KdeConnectPanel.qml:1460
+msgid "Recent notifications"
+msgstr "Recente meldingen"
+
+#: contents/ui/KdeConnectPanel.qml:1548
+msgid "Reply"
+msgstr "Beantwoorden"
+
+#: contents/ui/KdeConnectPanel.qml:1561
+msgid "Your reply"
+msgstr "Uw antwoord"
+
+#: contents/ui/KdeConnectPanel.qml:1578
+msgid "Dismiss notification"
+msgstr "Melding verwijderen"
+
+#: contents/ui/KdeConnectPanel.qml:1625
+msgid "More options"
+msgstr "Meer opties"
+
+#: contents/ui/KdeConnectPanel.qml:1659
+msgid "Open KDE Connect"
+msgstr "KDE Connect openen"
+
+#: contents/ui/KdeConnectPanel.qml:1666
+msgid "KDE Connect settings"
+msgstr "Instellingen van KDE Connect"
+
+#: contents/ui/KdeConnectPanel.qml:1671
+msgid "Hide this panel"
+msgstr "Dit paneel verbergen"
+
+#: contents/ui/MenuRepresentation.qml:411
+msgid "Good morning"
+msgstr "Goedemorgen"
+
+#: contents/ui/MenuRepresentation.qml:412
+msgid "Good afternoon"
+msgstr "Goedemiddag"
+
+#: contents/ui/MenuRepresentation.qml:413
+msgid "Good evening"
+msgstr "Goedenavond"
+
+#: contents/ui/MenuRepresentation.qml:559
+msgid "%1 app"
+msgid_plural "%1 apps"
+msgstr[0] "%1 app"
+msgstr[1] "%1 apps"
+
+#: contents/ui/MenuRepresentation.qml:781
+msgid "Sunday"
+msgstr "zondag"
+
+#: contents/ui/MenuRepresentation.qml:781
+msgid "Monday"
+msgstr "maandag"
+
+#: contents/ui/MenuRepresentation.qml:781
+msgid "Tuesday"
+msgstr "dinsdag"
+
+#: contents/ui/MenuRepresentation.qml:782
+msgid "Wednesday"
+msgstr "woensdag"
+
+#: contents/ui/MenuRepresentation.qml:782
+msgid "Thursday"
+msgstr "donderdag"
+
+#: contents/ui/MenuRepresentation.qml:782
+msgid "Friday"
+msgstr "vrijdag"
+
+#: contents/ui/MenuRepresentation.qml:782
+msgid "Saturday"
+msgstr "zaterdag"
+
+#: contents/ui/MenuRepresentation.qml:785
+msgid "%1 night session"
+msgstr "%1 – nacht"
+
+#: contents/ui/MenuRepresentation.qml:786
+msgid "%1 morning picks"
+msgstr "%1 – selectie voor de ochtend"
+
+#: contents/ui/MenuRepresentation.qml:787
+msgid "%1 afternoon picks"
+msgstr "%1 – selectie voor de middag"
+
+#: contents/ui/MenuRepresentation.qml:788
+msgid "%1 evening picks"
+msgstr "%1 – selectie voor de avond"
+
+#: contents/ui/MenuRepresentation.qml:797
+msgid "Your top picks"
+msgstr "Uw favorieten"
+
+#: contents/ui/MenuRepresentation.qml:798
+msgid "Frequently used"
+msgstr "Vaak gebruikt"
+
+#: contents/ui/MenuRepresentation.qml:801
+msgid "Your morning session"
+msgstr "Uw ochtend"
+
+#: contents/ui/MenuRepresentation.qml:802
+msgid "Good morning apps"
+msgstr "Apps voor de ochtend"
+
+#: contents/ui/MenuRepresentation.qml:803
+msgid "Midday picks"
+msgstr "Selectie voor het middaguur"
+
+#: contents/ui/MenuRepresentation.qml:804
+msgid "Afternoon session"
+msgstr "Middag"
+
+#: contents/ui/MenuRepresentation.qml:805
+msgid "Evening apps"
+msgstr "Apps voor de avond"
+
+#: contents/ui/MenuRepresentation.qml:806
+msgid "Late night"
+msgstr "Laat op de avond"
+
+#: contents/ui/MenuRepresentation.qml:811
+msgid "Lock the screen"
+msgstr "Het scherm vergrendelen"
+
+#: contents/ui/MenuRepresentation.qml:812
+msgid "Suspend to RAM"
+msgstr "Slaapstand"
+
+#: contents/ui/MenuRepresentation.qml:813
+msgid "Restart the computer"
+msgstr "De computer opnieuw opstarten"
+
+#: contents/ui/MenuRepresentation.qml:814
+msgid "Shut down the computer"
+msgstr "De computer afsluiten"
+
+#: contents/ui/MenuRepresentation.qml:815
+msgid "Take a screenshot"
+msgstr "Een schermafdruk maken"
+
+#: contents/ui/MenuRepresentation.qml:816
+msgid "Open System Settings"
+msgstr "Systeeminstellingen openen"
+
+#: contents/ui/MenuRepresentation.qml:817
+msgid "Open file manager"
+msgstr "Bestandsbeheerder openen"
+
+#: contents/ui/MenuRepresentation.qml:818
+msgid "Open a terminal"
+msgstr "Een terminal openen"
+
+#: contents/ui/MenuRepresentation.qml:819
+msgid "Log out"
+msgstr "Afmelden"
+
+#: contents/ui/MenuRepresentation.qml:842
+msgid "Search the web for \"%1\""
+msgstr "Op het web zoeken naar ‘%1’"
+
+#: contents/ui/MenuRepresentation.qml:843
+msgid "Opens default browser"
+msgstr "Opent de standaardbrowser"
+
+#: contents/ui/MenuRepresentation.qml:944
+msgid "today at %1"
+msgstr "vandaag om %1"
+
+#: contents/ui/MenuRepresentation.qml:945
+msgid "yesterday at %1"
+msgstr "gisteren om %1"
+
+#: contents/ui/MenuRepresentation.qml:946
+msgid "%1 at %2"
+msgstr "%1 om %2"
+
+#: contents/ui/MenuRepresentation.qml:955
+msgid "Just now"
+msgstr "Zojuist"
+
+#: contents/ui/MenuRepresentation.qml:956
+msgid "%1 min ago"
+msgstr "%1 min geleden"
+
+#: contents/ui/MenuRepresentation.qml:957
+msgid "%1 h ago"
+msgstr "%1 u geleden"
+
+#: contents/ui/MenuRepresentation.qml:1207
+msgid "New application"
+msgstr "Nieuwe toepassing"
+
+#: contents/ui/MenuRepresentation.qml:1208
+msgid "%1 is installed — filed under “%2”"
+msgstr "%1 is geïnstalleerd — ingedeeld onder ‘%2’"
+
+#: contents/ui/MenuRepresentation.qml:1211
+msgid "%1 new application"
+msgid_plural "%1 new applications"
+msgstr[0] "%1 nieuwe toepassing"
+msgstr[1] "%1 nieuwe toepassingen"
+
+#: contents/ui/MenuRepresentation.qml:1317
+msgid "Search for apps, settings and documents"
+msgstr "Zoeken naar apps, instellingen en documenten"
+
+#: contents/ui/MenuRepresentation.qml:1575
+msgid "Screenshot"
+msgstr "Schermafdruk"
+
+#: contents/ui/MenuRepresentation.qml:1576
+msgid "Lock Screen"
+msgstr "Scherm vergrendelen"
+
+#: contents/ui/MenuRepresentation.qml:1577
+msgid "Open Terminal"
+msgstr "Terminal openen"
+
+#: contents/ui/MenuRepresentation.qml:1578
+msgid "Open Files"
+msgstr "Bestanden openen"
+
+#: contents/ui/MenuRepresentation.qml:1579
+msgid "Calculator"
+msgstr "Rekenmachine"
+
+#: contents/ui/MenuRepresentation.qml:1580
+msgid "System Settings"
+msgstr "Systeeminstellingen"
+
+#: contents/ui/MenuRepresentation.qml:1716
+msgid "Pinned"
+msgstr "Vastgemaakt"
+
+#: contents/ui/MenuRepresentation.qml:1729
+msgid "Show more"
+msgstr "Meer tonen"
+
+#: contents/ui/MenuRepresentation.qml:1729
+msgid "Show less"
+msgstr "Minder tonen"
+
+#: contents/ui/MenuRepresentation.qml:2151 contents/ui/MenuRepresentation.qml:2940
+msgid "Recommended"
+msgstr "Aanbevolen"
+
+#: contents/ui/MenuRepresentation.qml:2164
+msgid "Show all"
+msgstr "Alles tonen"
+
+#: contents/ui/MenuRepresentation.qml:2272 contents/ui/MenuRepresentation.qml:2446
+msgid "All"
+msgstr "Alles"
+
+#: contents/ui/MenuRepresentation.qml:2281
+msgid "View: %1"
+msgstr "Weergave: %1"
+
+#: contents/ui/MenuRepresentation.qml:2281 contents/ui/MenuRepresentation.qml:3067
+msgid "List"
+msgstr "Lijst"
+
+#: contents/ui/MenuRepresentation.qml:2281 contents/ui/MenuRepresentation.qml:3066
+msgid "Grid"
+msgstr "Raster"
+
+#: contents/ui/MenuRepresentation.qml:2281 contents/ui/MenuRepresentation.qml:3065
+msgid "Categories"
+msgstr "Categorieën"
+
+#: contents/ui/MenuRepresentation.qml:2447
+msgid "Apps"
+msgstr "Apps"
+
+#: contents/ui/MenuRepresentation.qml:2448
+msgid "Files"
+msgstr "Bestanden"
+
+#: contents/ui/MenuRepresentation.qml:2450
+msgid "Actions"
+msgstr "Acties"
+
+#: contents/ui/MenuRepresentation.qml:2627
+msgid "Enter or click to copy result"
+msgstr "Enter of klik om het resultaat te kopiëren"
+
+#: contents/ui/MenuRepresentation.qml:2651
+msgid "Type a command  ·  ↓ navigate  ·  /calc expr  ·  Enter run"
+msgstr "Typ een opdracht  ·  ↓ navigeren  ·  /calc expr  ·  Enter uitvoeren"
+
+#: contents/ui/MenuRepresentation.qml:2762
+msgid "Alt+1–9 to launch"
+msgstr "Alt+1–9 om te starten"
+
+#: contents/ui/MenuRepresentation.qml:2905
+msgid "Press Enter to run: %1"
+msgstr "Druk op Enter om uit te voeren: %1"
+
+#: contents/ui/MenuRepresentation.qml:2906
+msgid "Type a shell command after '>'"
+msgstr "Typ een shell-opdracht na ‘>’"
+
+#: contents/ui/MenuRepresentation.qml:2909
+msgid "No results for \"%1\" in %2"
+msgstr "Geen resultaten voor ‘%1’ in %2"
+
+#: contents/ui/MenuRepresentation.qml:2912
+msgid "No results for \"%1\""
+msgstr "Geen resultaten voor ‘%1’"
+
+#: contents/ui/MenuRepresentation.qml:2950
+msgid "Back"
+msgstr "Terug"
+
+#: contents/ui/MenuRepresentation.qml:2997
+msgid "No recent documents this week"
+msgstr "Deze week geen recente documenten"
+
+#: contents/ui/MenuRepresentation.qml:3552 contents/ui/MenuRepresentation.qml:4038
+msgid "New folder"
+msgstr "Nieuwe map"
+
+#: contents/ui/MenuRepresentation.qml:3561 contents/ui/MenuRepresentation.qml:4047
+msgid "Folder name"
+msgstr "Mapnaam"
+
+#: contents/ui/MenuRepresentation.qml:3565
+msgid "Choose from pinned apps:"
+msgstr "Kiezen uit vastgemaakte apps:"
+
+#: contents/ui/MenuRepresentation.qml:3671 contents/ui/MenuRepresentation.qml:4071
+msgid "Create"
+msgstr "Maken"
+
+#: contents/ui/MenuRepresentation.qml:3697 contents/ui/MenuRepresentation.qml:3981
+msgid "Rename folder"
+msgstr "Map hernoemen"
+
+#: contents/ui/MenuRepresentation.qml:3711 contents/ui/MenuRepresentation.qml:3995
+msgid "Delete folder"
+msgstr "Map verwijderen"
+
+#: contents/ui/MenuRepresentation.qml:3722
+msgid "Unpin all apps in folder"
+msgstr "Alle apps in de map losmaken"
+
+#: contents/ui/MenuRepresentation.qml:3774 contents/ui/MenuRepresentation.qml:4124
+msgid "Rename Folder"
+msgstr "Map hernoemen"
+
+#: contents/ui/MenuRepresentation.qml:3796
+msgid "Save"
+msgstr "Opslaan"
+
+#: contents/ui/MenuRepresentation.qml:3966
+msgid "Drag apps here to add them"
+msgstr "Sleep apps hierheen om ze toe te voegen"
+
+#: contents/ui/MenuRepresentation.qml:4055
+msgid "Drag apps from the list into this folder to add them."
+msgstr "Sleep apps uit de lijst naar deze map om ze toe te voegen."
+
+#: contents/ui/MenuRepresentation.qml:4146
+msgid "Rename"
+msgstr "Hernoemen"
+
+#: contents/ui/MenuRepresentation.qml:4269
+msgid "Add apps — %1"
+msgstr "Apps toevoegen — %1"
+
+#: contents/ui/MenuRepresentation.qml:4270
+msgid "Add apps to folder"
+msgstr "Apps aan map toevoegen"
+
+#: contents/ui/MenuRepresentation.qml:4280
+msgid "Filter…"
+msgstr "Filteren…"
+
+#: contents/ui/RecentDocDelegate.qml:48
+msgid "Home Folder"
+msgstr "Persoonlijke map"
+
+#: contents/ui/main.qml:255
+msgid "Edit Applications…"
+msgstr "Toepassingen bewerken…"
+
+#: contents/ui/code/tools.js:44
+msgid "Remove from Favorites"
+msgstr "Verwijderen uit favorieten"
+
+#: contents/ui/code/tools.js:48
+msgid "Add to Favorites"
+msgstr "Toevoegen aan favorieten"
+
+#: contents/ui/code/tools.js:72
+msgid "On All Activities"
+msgstr "In alle activiteiten"
+
+#: contents/ui/code/tools.js:122
+msgid "On the Current Activity"
+msgstr "In de huidige activiteit"
+
+#: contents/ui/code/tools.js:136
+msgid "Show in Favorites"
+msgstr "Tonen in favorieten"
+
+#: contents/config/config.qml:26
+msgid "General"
+msgstr "Algemeen"
+
