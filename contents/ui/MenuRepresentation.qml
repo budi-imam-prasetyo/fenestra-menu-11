@@ -1539,7 +1539,7 @@ PlasmaCore.Dialog {
                 anchors.centerIn: parent
                 width: Kirigami.Units.iconSizes.smallMedium
                 height: width
-                source: Qt.resolvedUrl("../icons/status/kdeconnect.svg")
+                source: Qt.resolvedUrl("../icons/status/fenestra-kdeconnect.svg")
             }
 
             MouseArea {

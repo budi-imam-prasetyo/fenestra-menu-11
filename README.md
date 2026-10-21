@@ -65,8 +65,8 @@ Translations other than French are machine-assisted and **should be reviewed by 
 - **Icons**
   - Mobile panel pictograms (`contents/icons/kdeconnect/`): [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons), © Microsoft Corporation, MIT License (license file included).
   - Power button and power menu icons (`contents/icons/status/system-*-v2.svg`): [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons), © Microsoft Corporation, MIT License.
-  - KDE Connect button (`contents/icons/status/kdeconnect.svg`): from the [KDE-Windows-Modern](https://github.com/Jeysef/KDE-Windows-Modern) icon theme by Jeysef, GPL-3.0.
-  - Phone battery and mute icons (`contents/icons/status/`): original creations for Fenestra.
+  - KDE Connect button (`contents/icons/status/fenestra-kdeconnect.svg`): from the [KDE-Windows-Modern](https://github.com/Jeysef/KDE-Windows-Modern) icon theme by Jeysef, GPL-3.0.
+  - Phone battery, mute and default avatar icons (`contents/icons/status/phone-*.svg`, `fenestra-avatar.svg`): original creations for Fenestra.
 
 ## Also in the Fenestra series
 
@@ -74,6 +74,7 @@ Translations other than French are machine-assisted and **should be reviewed by 
 - [Fenestra Weather Widget](https://github.com/naykkalak/fenestra-weather-widget): weather widget
 - [Fenestra SDDM](https://github.com/naykkalak/fenestra-sddm): login screen
 - [Fenestra This PC](https://github.com/naykkalak/fenestra-ce-pc): “This PC” window
+- [Fenestra Search](https://github.com/naykkalak/fenestra-search): taskbar search
 
 ## License
 

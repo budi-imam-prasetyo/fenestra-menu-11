@@ -56,25 +56,6 @@ RowLayout{
         id: sessionManager
     }
 
-    // ── Détection de la distribution active, pour afficher le bon logo
-    // dans la fenêtre "Compte" - lit le champ ID de /etc/os-release
-    // (standard sur toutes les distributions Linux modernes), ex: "solus",
-    // "fedora", "opensuse-tumbleweed", "manjaro", etc.
-    Plasma5Support.DataSource {
-        id: distroCheck
-        engine: "executable"
-        connectedSources: ["cat /etc/os-release"]
-        property string distroId: ""
-
-        onNewData: (sourceName, data) => {
-            var text = ((data["stdout"] || "") + "");
-            var match = text.match(/^ID=(.*)$/m);
-            if (match) {
-                distroId = match[1].replace(/"/g, "").trim();
-            }
-        }
-    }
-
     // ── Lanceur de commande shell (ex: ouvrir les Paramètres système)
     Plasma5Support.DataSource {
         id: runner
@@ -175,7 +156,7 @@ RowLayout{
                         if (faceUrl !== "") {
                             return faceUrl
                         }
-                        return "file://usr/share/icons/breeze/apps/48/kuser.svg"
+                        return Qt.resolvedUrl("../icons/status/fenestra-avatar.svg")   // Fenestra 1.1 : avatar par défaut
                     }
                     cache: false
                     visible: false
@@ -260,13 +241,8 @@ RowLayout{
                     Image {
                         id: distroLogo
                         property bool primaryFailed: false
-                        readonly property string basePath: "file:///home/utilisateur/.local/share/icons/distributions/"
-                        // Rien à charger tant que la vraie détection (distroCheck)
-                        // n'a pas abouti. Repli sur le logo KDE si le logo de la
-                        // distribution est absent (on ne touche jamais "source"
-                        // directement, juste ce drapeau).
-                        source: distroCheck.distroId === "" ? ""
-                            : (primaryFailed ? (basePath + "kde.svg") : (basePath + distroCheck.distroId + ".svg"))
+                        // Fenestra 1.1 : aucun logo de distribution n'est chargé (élément gardé vide)
+                        source: ""
                         visible: false   // Fenestra : logo de distribution masqué
                         onStatusChanged: {
                             if (status === Image.Error && !primaryFailed) {
@@ -431,7 +407,7 @@ RowLayout{
                                                     property bool failed: false
                                                     anchors.fill: parent
                                                     source: failed
-                                                        ? "file:///usr/share/icons/breeze/apps/48/kuser.svg"
+                                                        ? Qt.resolvedUrl("../icons/status/fenestra-avatar.svg")   // Fenestra 1.1 : avatar par défaut
                                                         : ("file:///var/lib/AccountsService/icons/" + modelData.login)
                                                     onStatusChanged: {
                                                         if (status === Image.Error && !failed) {

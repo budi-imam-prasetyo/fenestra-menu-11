@@ -1039,7 +1039,7 @@ PlasmaCore.Dialog {
                             source: {
                                 if (!panel.dev || panel.dev.charge < 0) return "battery-missing";
                                 var lvl = Math.max(0, Math.min(100, Math.round(panel.dev.charge / 10) * 10));
-                                return Qt.resolvedUrl("../icons/status/battery-" + ("00" + lvl).slice(-3) + (panel.dev.charging ? "-charging" : "") + ".svg");
+                                return Qt.resolvedUrl("../icons/status/phone-battery-" + ("00" + lvl).slice(-3) + (panel.dev.charging ? "-charging" : "") + ".svg");
                             }
                             Layout.preferredWidth: Kirigami.Units.iconSizes.small
                             Layout.preferredHeight: Kirigami.Units.iconSizes.small
@@ -1349,7 +1349,7 @@ PlasmaCore.Dialog {
                     framed: false
                     press: true
                     Layout.leftMargin: -13 + panel.recentrageVolet   // Fenestra : recentrage du volet
-                    iconName: (panel.dev && panel.dev.mVolume === 0) ? Qt.resolvedUrl("../icons/status/audio-volume-muted.svg") : "audio-volume-medium"
+                    iconName: (panel.dev && panel.dev.mVolume === 0) ? Qt.resolvedUrl("../icons/status/phone-audio-volume-muted.svg") : "audio-volume-medium"
                     implicitHeight: 26
                     implicitWidth: implicitHeight
                     onClicked: panel.toggleMute()
@@ -1663,7 +1663,7 @@ PlasmaCore.Dialog {
                 PlusItem {
                     label: i18n("Open KDE Connect")
                     // même icône que le bouton KDE Connect du menu
-                    iconeFichier: Qt.resolvedUrl("../icons/status/kdeconnect.svg")
+                    iconeFichier: Qt.resolvedUrl("../icons/status/fenestra-kdeconnect.svg")
                     onClicked: { plusMenu.visible = false; panel.run("kdeconnect-app"); }
                 }
                 PlusItem {
