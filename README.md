@@ -34,6 +34,28 @@ Part of the **Fenestra** series, designed in particular for people coming from W
 - **Wayland** session. X11 is not supported.
 - For the mobile device panel: **KDE Connect** installed and a paired phone, `qdbus` (`qdbus6` or `qdbus-qt6`) and `python3`.
 
+## Firewall
+
+The mobile device panel uses KDE Connect. If a firewall is active on your computer,
+KDE Connect needs ports 1714 to 1764 open (TCP and UDP) on your local network,
+otherwise your phone will not be found.
+
+**firewalld** (Fedora, openSUSE):
+
+```bash
+sudo firewall-cmd --permanent --add-service=kdeconnect
+sudo firewall-cmd --reload
+```
+
+**ufw** (Ubuntu, Kubuntu, Linux Mint):
+
+```bash
+sudo ufw allow 1714:1764/udp
+sudo ufw allow 1714:1764/tcp
+```
+
+Solus has no active firewall by default.
+
 ## Installation
 
 ### From the KDE Store
