@@ -115,6 +115,9 @@
     <entry name="showSleepButton" type="Bool">
       <default>true</default>
     </entry>
+    <entry name="showHibernateButton" type="Bool">
+      <default>true</default>
+    </entry>
     <entry name="showRestartButton" type="Bool">
       <default>true</default>
     </entry>

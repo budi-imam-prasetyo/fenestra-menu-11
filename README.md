@@ -15,7 +15,7 @@ Part of the **Fenestra** series, designed in particular for people coming from W
 - Menu width adapts to the screen: 6, 7 or 8 columns (below 1900 px, 1900–2499 px, 2500 px and above).
 - **Search** for apps, files, settings and actions, with filters, web search, a built-in calculator (`/calc`) and `Alt+1–9` to launch a result.
 - Optional shell command runner (`> command`) and optional quick actions bar (screenshot, lock, terminal…).
-- Footer with your **account** (avatar, name, manage account, other users) and a **power** menu (lock, sleep, restart, shut down, sign out).
+- Footer with your **account** (avatar, name, manage account, other users) and a **power** menu (lock, sleep, hibernate, shut down, restart, sign out). Hibernate appears only when the running system reports that hibernation is available.
 - **New** badge on newly installed apps.
 
 ### Mobile device panel (KDE Connect)

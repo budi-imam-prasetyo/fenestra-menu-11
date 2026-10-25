@@ -3,7 +3,7 @@
 # Machine-assisted translation — to be reviewed by a native speaker.
 msgid ""
 msgstr ""
-"Project-Id-Version: Fenestra Menu 11 1.0\n"
+"Project-Id-Version: Fenestra Menu 11 1.2.0\n"
 "Report-Msgid-Bugs-To: https://github.com/naykkalak/fenestra-menu-11/issues\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -132,6 +132,10 @@ msgstr "显示:"
 #: contents/ui/ConfigGeneral.qml:277
 msgid "Sleep / Suspend"
 msgstr "睡眠"
+
+#: contents/ui/ConfigGeneral.qml:289 contents/ui/Footer.qml:791
+msgid "Hibernate"
+msgstr "休眠"
 
 #: contents/ui/ConfigGeneral.qml:282 contents/ui/Footer.qml:767
 msgid "Restart"

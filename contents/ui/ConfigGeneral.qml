@@ -68,6 +68,7 @@ KCM.SimpleKCM {
     property alias cfg_enableShellRunner: enableShellRunnerCb.checked
     property alias cfg_showQuickActions: showQuickActionsCb.checked
     property alias cfg_showSleepButton: showSleepCb.checked
+    property alias cfg_showHibernateButton: showHibernateCb.checked
     property alias cfg_showRestartButton: showRestartCb.checked
     property alias cfg_showShutdownButton: showShutdownCb.checked
 
@@ -281,6 +282,11 @@ KCM.SimpleKCM {
             id: showSleepCb
             Kirigami.FormData.label: i18n("Show:")
             text: i18n("Sleep / Suspend")
+        }
+
+        CheckBox {
+            id: showHibernateCb
+            text: i18n("Hibernate")
         }
 
         CheckBox {

@@ -44,6 +44,21 @@ RowLayout{
         powerMenu.visible = false;
     }
 
+    function requestHibernate() {
+        powerMenu.visible = false;
+        if (sessionManager.canHibernate && typeof sessionManager.hibernate === "function") {
+            try {
+                sessionManager.hibernate();
+                return;
+            } catch (e) {
+                console.warn("fenestra-menu11: KDE hibernate failed:", e);
+            }
+        }
+        if (!hibernateProbe.requestHibernate()) {
+            console.warn("fenestra-menu11: hibernate is not available");
+        }
+    }
+
     Keys.onTabPressed: event => {
         event.accepted = true;
         tabOut();
@@ -55,6 +70,13 @@ RowLayout{
     SessionManagement {
         id: sessionManager
     }
+
+    HibernateProbe {
+        id: hibernateProbe
+        powerSession: sessionManager
+    }
+
+    readonly property bool hibernateAvailable: hibernateProbe.hibernateAvailable
 
     // ── Lanceur de commande shell (ex: ouvrir les Paramètres système)
     Plasma5Support.DataSource {
@@ -618,9 +640,10 @@ RowLayout{
         PlasmaComponents3.ToolTip.timeout: 1000
         PlasmaComponents3.ToolTip.visible: hovered && !powerMenu.visible
         PlasmaComponents3.ToolTip.text: i18n("Power")
-        visible: sessionManager.canLock || sessionManager.canSuspend || sessionManager.canReboot || sessionManager.canShutdown
+        visible: sessionManager.canLock || sessionManager.canSuspend || (hibernateAvailable && Plasmoid.configuration.showHibernateButton) || sessionManager.canReboot || sessionManager.canShutdown
 
         onClicked: {
+            hibernateProbe.refresh();
             powerMenuAboutToOpen();
             powerMenu.visible = true;
         }
@@ -737,6 +760,46 @@ RowLayout{
                         powerMenu.visible = false;
                         sessionManager.suspend();
                     }
+                }
+                PlasmaComponents3.ItemDelegate {
+                    Layout.fillWidth: true
+                    visible: hibernateAvailable && Plasmoid.configuration.showHibernateButton
+                    hoverEnabled: true
+                    spacing: Kirigami.Units.smallSpacing + 6
+                    leftPadding: Kirigami.Units.smallSpacing + 6
+                    rightPadding: Kirigami.Units.smallSpacing + 6
+                    topPadding: Kirigami.Units.smallSpacing
+                    bottomPadding: Kirigami.Units.smallSpacing
+                    icon.width: 22
+                    icon.height: 22
+                    icon.source: Qt.resolvedUrl("../icons/status/system-hibernate-v2.svg")   // Fenestra : icône d'alimentation du widget
+                    contentItem: RowLayout {   // icône à la couleur du texte du thème
+                        spacing: parent ? parent.spacing : Kirigami.Units.smallSpacing + 6
+                        Kirigami.Icon {
+                            source: Qt.resolvedUrl("../icons/status/system-hibernate-v2.svg")
+                            isMask: true
+                            color: Kirigami.Theme.textColor
+                            Layout.preferredWidth: 22
+                            Layout.preferredHeight: 22
+                        }
+                        PlasmaComponents3.Label {
+                            text: parent.parent ? parent.parent.text : ""
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                        }
+                    }
+                    text: i18n("Hibernate")
+                    background: Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: 2
+                        radius: Kirigami.Units.smallSpacing
+                        color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff") // surlignement-alim-v1
+                        border.width: 1                 // même bordure que les autres surlignements
+                        border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
+                        opacity: parent.hovered ? 1.0 : 0.0
+                        Behavior on opacity { NumberAnimation { duration: 100 } }
+                    }
+                    onClicked: requestHibernate()
                 }
                 PlasmaComponents3.ItemDelegate {
                     Layout.fillWidth: true
