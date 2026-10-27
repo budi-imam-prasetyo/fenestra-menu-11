@@ -32,6 +32,8 @@ PlasmaCore.Dialog {
 
     // fenêtre du menu principal (renseignée par MenuRepresentation.qml)
     property var menuWindow: null
+    // Optional Rust accelerator (Core.qml), supplied by MenuRepresentation.qml.
+    property var core: null
 
     flags: Qt.WindowStaysOnTopHint
     // posé sur le bord bas, comme le menu : pas de bordure ni d'arrondi en bas
@@ -176,13 +178,36 @@ PlasmaCore.Dialog {
     // icônes Fluent UI (MIT) rangées dans le widget : contents/icons/kdeconnect/
     function ico(n) { return Qt.resolvedUrl("../icons/kdeconnect/" + n + ".svg"); }
 
-    function shq(t) { return "'" + String(t).replace(/'/g, "'\\''") + "'"; }
+    function shq(t) {
+        if (core !== null) return core.shellQuote(t);
+        return "'" + String(t).replace(/'/g, "'\\''") + "'";
+    }
     function cli(args) { return "kdeconnect-cli -d " + shq(dev.id) + " " + args; }
     function say(t) { toast = t; toastTimer.restart(); }
 
-    function doRing()      { if (!online) return; run(cli("--ring")); say(i18n("The phone is ringing…")); }
-    function doPing()      { if (!online) return; run(cli("--ping-msg " + shq(i18n("Hello from the PC")))); say(i18n("Ping sent")); }
-    function doClipboard() { if (!online) return; run(cli("--send-clipboard")); say(i18n("Clipboard sent")); }
+    // Use the Rust command builder when it is available and accepted the
+    // input; otherwise fall back to the JavaScript builder.
+    function nativeCommand(command, fallback) { return command !== "" ? command : fallback; }
+
+    function doRing() {
+        if (!online) return;
+        var command = core !== null ? core.cmdRing(dev.id) : "";
+        run(nativeCommand(command, cli("--ring")));
+        say(i18n("The phone is ringing…"));
+    }
+    function doPing() {
+        if (!online) return;
+        var message = i18n("Hello from the PC");
+        var command = core !== null ? core.cmdPing(dev.id, message) : "";
+        run(nativeCommand(command, cli("--ping-msg " + shq(message))));
+        say(i18n("Ping sent"));
+    }
+    function doClipboard() {
+        if (!online) return;
+        var command = core !== null ? core.cmdSendClipboard(dev.id) : "";
+        run(nativeCommand(command, cli("--send-clipboard")));
+        say(i18n("Clipboard sent"));
+    }
     function doBrowse() {
         if (!online) return;
         var id = shq(dev.id);
@@ -198,8 +223,11 @@ PlasmaCore.Dialog {
         fileDialog.open();
     }
     function sendFiles(urls) {
-        for (var k = 0; k < urls.length; k++)
-            run(cli("--share " + shq(urls[k].toString())));
+        for (var k = 0; k < urls.length; k++) {
+            var path = urls[k].toString();
+            var command = core !== null ? core.cmdShareFile(dev.id, path) : "";
+            run(nativeCommand(command, cli("--share " + shq(path))));
+        }
         say(i18np("File sent", "%1 files sent", urls.length));
     }
     // lien web -> ouvert sur le téléphone ; autre texte -> envoyé comme texte
@@ -208,10 +236,12 @@ PlasmaCore.Dialog {
         if (!online || t === "") return false;
         if (/^(https?:\/\/|www\.)/i.test(t)) {
             var url = /^www\./i.test(t) ? "https://" + t : t;
-            run(cli("--share " + shq(url)));
+            var command = core !== null ? core.cmdShareUrl(dev.id, url) : "";
+            run(nativeCommand(command, cli("--share " + shq(url))));
             say(i18n("Link sent: it opens on the phone"));
         } else {
-            run(cli("--share-text " + shq(t)));
+            var command = core !== null ? core.cmdShareText(dev.id, t) : "";
+            run(nativeCommand(command, cli("--share-text " + shq(t))));
             say(i18n("Text sent"));
         }
         return true;
@@ -226,7 +256,7 @@ PlasmaCore.Dialog {
             "d=\"$d/KDE Connect\"; mkdir -p \"$d\"; " +
             "f=\"$d/photo-$(date +%Y%m%d-%H%M%S).jpg\"; " +
             "Q=$(command -v qdbus6 || command -v qdbus-qt6 || command -v qdbus); " +
-            "\"$Q\" org.kde.kdeconnect /modules/kdeconnect/devices/" + dev.id +
+            "\"$Q\" org.kde.kdeconnect /modules/kdeconnect/devices/" + shq(dev.id) +
             "/photo org.kde.kdeconnect.device.photo.requestPhoto \"file://$f\" || exit 1; " +
             "for n in $(seq 1 90); do [ -s \"$f\" ] && { sleep 1; xdg-open \"$f\"; exit 0; }; sleep 1; done"));
         say(i18n("Take the photo on the phone: it will open here."));
@@ -235,10 +265,11 @@ PlasmaCore.Dialog {
     // commandes multimédia : PlayPause, Next, Previous
     function media(action) {
         if (!hasMedia) return;
-        run("sh -c " + shq(
+        var command = core !== null ? core.cmdMprisAction(dev.id, action) : "";
+        run(nativeCommand(command, "sh -c " + shq(
             "Q=$(command -v qdbus6 || command -v qdbus-qt6 || command -v qdbus); " +
-            "\"$Q\" org.kde.kdeconnect /modules/kdeconnect/devices/" + dev.id +
-            "/mprisremote org.kde.kdeconnect.device.mprisremote.sendAction " + action));
+            "\"$Q\" org.kde.kdeconnect /modules/kdeconnect/devices/" + shq(dev.id) +
+            "/mprisremote org.kde.kdeconnect.device.mprisremote.sendAction " + action)));
     }
 
     function doSettings() { run("kdeconnect-app"); }
@@ -257,10 +288,11 @@ PlasmaCore.Dialog {
     }
 
     function mprisSet(prop, value) {
-        run("sh -c " + shq(
+        var command = core !== null ? core.cmdMprisSet(dev.id, prop, Math.round(value)) : "";
+        run(nativeCommand(command, "sh -c " + shq(
             "Q=$(command -v qdbus6 || command -v qdbus-qt6 || command -v qdbus); " +
-            "\"$Q\" org.kde.kdeconnect /modules/kdeconnect/devices/" + dev.id +
-            "/mprisremote org.kde.kdeconnect.device.mprisremote." + prop + " " + value));
+            "\"$Q\" org.kde.kdeconnect /modules/kdeconnect/devices/" + shq(dev.id) +
+            "/mprisremote org.kde.kdeconnect.device.mprisremote." + prop + " " + value)));
     }
 
     function seekTo(ms) {
@@ -308,27 +340,29 @@ PlasmaCore.Dialog {
     function notifCall(id, method, arg) {
         run("sh -c " + shq(
             "Q=$(command -v qdbus6 || command -v qdbus-qt6 || command -v qdbus); " +
-            "\"$Q\" org.kde.kdeconnect /modules/kdeconnect/devices/" + dev.id + "/notifications/" + id +
+            "\"$Q\" org.kde.kdeconnect /modules/kdeconnect/devices/" + shq(dev.id) + "/notifications/" + shq(id) +
             " org.kde.kdeconnect.device.notifications.notification." + method +
             (arg !== undefined ? " " + shq(arg) : "")));
     }
 
     // retirer = balayer la notification : le message lui-même n'est pas supprimé
     function dismissNotif(id) {
-        notifCall(id, "dismiss");
+        var command = core !== null ? core.cmdDismissNotification(dev.id, id) : "";
+        if (command !== "") run(command); else notifCall(id, "dismiss");
         notifs = notifs.filter(function (n) { return n.id !== id; });
         if (notifReplying === id) notifReplying = "";
     }
 
     function dismissAllNotifs() {
-        for (var k = 0; k < notifs.length; k++) notifCall(notifs[k].id, "dismiss");
+        for (var k = 0; k < notifs.length; k++) dismissNotif(notifs[k].id);
         notifs = [];
         notifReplying = "";
     }
 
     function replyNotif(id, msg) {
         if (String(msg).trim() === "") return false;
-        notifCall(id, "sendReply", msg);
+        var command = core !== null ? core.cmdReplyNotification(dev.id, id, msg) : "";
+        if (command !== "") run(command); else notifCall(id, "sendReply", msg);
         notifReplying = "";
         say(i18n("Reply sent"));
         return true;
@@ -344,9 +378,14 @@ PlasmaCore.Dialog {
 
     function loadContacts() {
         if (!dev) return;
-        var dossier = "$HOME/.local/share/kpeoplevcard/kdeconnect-" + dev.id;
+        var nativeContacts = core !== null ? core.kdeconnectVcardLoad(dev.id) : null;
+        if (nativeContacts !== null) {
+            contacts = nativeContacts;
+            return;
+        }
+        var dossier = "$HOME/.local/share/kpeoplevcard/kdeconnect-" + shq(dev.id);
         contactsSource.connectSource("sh -c " + shq("python3 -c " + shq(lecteurContacts) +
-                                     " \"" + dossier + "\"") + " #" + Date.now());
+                                     " " + dossier) + " #" + Date.now());
     }
 
     function sansAccents(t) {
@@ -357,12 +396,14 @@ PlasmaCore.Dialog {
 
     function filterContacts(q) {
         var n = sansAccents(q).trim();
+        if (n === "") { smsSuggestions = []; return; }
+        var nativeMatches = core !== null ? core.kdeconnectFilterContacts(contacts, q, 6) : null;
+        if (nativeMatches !== null) { smsSuggestions = nativeMatches; return; }
         var chiffres = n.replace(/[^0-9]/g, "");
         // numéros français : 06… et +33 6… sont équivalents
         var autre = chiffres.indexOf("0") === 0 ? "33" + chiffres.slice(1)
                   : chiffres.indexOf("33") === 0 ? "0" + chiffres.slice(2) : "";
         var res = [];
-        if (n === "") { smsSuggestions = []; return; }
         for (var i = 0; i < contacts.length && res.length < 6; i++) {
             var c = contacts[i];
             var parNom = c.key.indexOf(n) >= 0;
@@ -376,6 +417,8 @@ PlasmaCore.Dialog {
     // affichage à la française : 06 35 93 98 41  /  +336 35 93 98 41
     // (numéros étrangers ou courts : laissés tels quels)
     function fmtNumero(num) {
+        var nativeNumber = core !== null ? core.kdeconnectFormatNumber(num) : null;
+        if (nativeNumber !== null) return nativeNumber;
         var brut = String(num).trim();
         var d = brut.replace(/[^0-9]/g, "");
         function paires(t) { return t.replace(/(\d{2})(?=\d)/g, "$1 "); }
@@ -410,8 +453,10 @@ PlasmaCore.Dialog {
         say(i18n("Sending SMS…"));
         // « echo CODE=$? » : la commande dit si le téléphone a bien reçu l'ordre d'envoi
         var propre = num.trim().replace(/[\s.\-()]/g, "");   // 06 35… -> 0635…
-        smsSource.connectSource("sh -c " + shq(cli("--destination " + shq(propre) +
-                                " --send-sms " + shq(msg)) + "; echo CODE=$?") + " #" + Date.now());
+        var command = core !== null ? core.cmdSendSms(dev.id, propre, msg) : "";
+        smsSource.connectSource(nativeCommand(command,
+                                "sh -c " + shq(cli("--destination " + shq(propre) +
+                                " --send-sms " + shq(msg)) + "; echo CODE=$?")) + " #" + Date.now());
         return true;
     }
     property bool smsEnCours: false
@@ -758,24 +803,29 @@ PlasmaCore.Dialog {
                 panel.noQdbus = (out === "NOQDBUS");
                 var list = [];
                 if (!panel.noQdbus && out !== "") {
-                    var lines = out.split("\n");
-                    for (var k = 0; k < lines.length; k++) {
-                        var f = lines[k].split("\t");
-                        if (f.length < 6 || f[0] === "") continue;
-                        var force = parseInt(f[8]);
-                        list.push({ id: f[0], name: f[1] || f[0], type: f[2],
-                                    reachable: f[3] === "true",
-                                    charge: parseInt(f[4]), charging: f[5] === "true",
-                                    plugins: (f[6] || "").split(","),
-                                    netType: (f[7] || "").trim(),
-                                    netStrength: isNaN(force) ? -1 : force,
-                                    mTitle: (f[9] || "").trim(),
-                                    mArtist: (f[10] || "").trim(),
-                                    mPlaying: f[11] === "true",
-                                    mLength: parseInt(f[12]) || 0,
-                                    mPos: parseInt(f[13]) || 0,
-                                    mSeek: f[14] === "true",
-                                    mVolume: isNaN(parseInt(f[15])) ? -1 : parseInt(f[15]) });
+                    var nativeDevices = panel.core !== null ? panel.core.kdeconnectParseDevices(out) : null;
+                    if (nativeDevices !== null) {
+                        list = nativeDevices;
+                    } else {
+                        var lines = out.split("\n");
+                        for (var k = 0; k < lines.length; k++) {
+                            var f = lines[k].split("\t");
+                            if (f.length < 6 || f[0] === "") continue;
+                            var force = parseInt(f[8]);
+                            list.push({ id: f[0], name: f[1] || f[0], type: f[2],
+                                        reachable: f[3] === "true",
+                                        charge: parseInt(f[4]), charging: f[5] === "true",
+                                        plugins: (f[6] || "").split(","),
+                                        netType: (f[7] || "").trim(),
+                                        netStrength: isNaN(force) ? -1 : force,
+                                        mTitle: (f[9] || "").trim(),
+                                        mArtist: (f[10] || "").trim(),
+                                        mPlaying: f[11] === "true",
+                                        mLength: parseInt(f[12]) || 0,
+                                        mPos: parseInt(f[13]) || 0,
+                                        mSeek: f[14] === "true",
+                                        mVolume: isNaN(parseInt(f[15])) ? -1 : parseInt(f[15]) });
+                        }
                     }
                 }
                 // garde l'appareil choisi s'il existe toujours
@@ -849,8 +899,14 @@ PlasmaCore.Dialog {
             connectedSources: []
             onNewData: (source, data) => {
                 disconnectSource(source);
+                var output = String(data["stdout"] || "");
+                var nativeContacts = panel.core !== null ? panel.core.kdeconnectParseContacts(output) : null;
+                if (nativeContacts !== null) {
+                    panel.contacts = nativeContacts;
+                    return;
+                }
                 var list = [];
-                var lignes = String(data["stdout"] || "").split("\n");
+                var lignes = output.split("\n");
                 for (var k = 0; k < lignes.length; k++) {
                     var f = lignes[k].split("\t");
                     if (f.length < 2 || f[0] === "" || f[1] === "") continue;

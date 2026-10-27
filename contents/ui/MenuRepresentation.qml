@@ -45,6 +45,8 @@ PlasmaCore.Dialog {
     id: root
 
     objectName: "popupWindow"
+    // Optional Rust accelerator, supplied by main.qml / CompactRepresentation.
+    property var core: null
     flags: Qt.WindowStaysOnTopHint
     location: {
         if (Plasmoid.configuration.displayPosition === 1)
@@ -731,6 +733,8 @@ PlasmaCore.Dialog {
         function loadLaunchCounts() {
             var raw = Plasmoid.configuration.appLaunchCounts;
             if (!raw || raw.length === 0) { launchCounts = ({}); return; }
+            var parsed = root.core !== null ? root.core.launchParseCounts(raw) : null;
+            if (parsed !== null) { launchCounts = parsed; return; }
             try { launchCounts = JSON.parse(raw); } catch(e) { launchCounts = ({}); }
         }
 
@@ -751,6 +755,12 @@ PlasmaCore.Dialog {
         // Returns a 0-10 score for how strongly an app matches the current time/day slot
         function workflowScore(appId) {
             if (!appId) return 0;
+            if (root.core !== null) {
+                var clock = new Date();
+                var nativeScore = root.core.launchScore(
+                    JSON.stringify(launchCounts), appId, clock.getDay(), clock.getHours());
+                if (nativeScore !== null) return nativeScore;
+            }
             var entry = launchCounts[appId];
             if (!entry || typeof entry !== "object") return 0;
             var bucket = currentBucket();
@@ -761,6 +771,18 @@ PlasmaCore.Dialog {
 
         function recordLaunch(appId) {
             if (!appId || appId === "") return;
+            if (root.core !== null) {
+                var clock = new Date();
+                var updated = root.core.launchRecord(
+                    JSON.stringify(launchCounts), appId,
+                    clock.getDay(), clock.getHours(), Date.now());
+                if (updated !== null) {
+                    launchCounts = updated;
+                    saveLaunchCounts();
+                    forgetNewApp(appId);
+                    return;
+                }
+            }
             var updated = JSON.parse(JSON.stringify(launchCounts));
             var bucket = currentBucket();
             var prev = updated[appId];
@@ -777,10 +799,15 @@ PlasmaCore.Dialog {
         // ── Smart Context ────────────────────────────────────────────────────
         property string contextLabel: {
             var counts = rootItem.launchCounts;
+            var clock = new Date();
             // Check for workflow pattern: any app with bucket score >= 6
-            var hasWorkflow = false;
-            for (var id in counts) {
-                if (rootItem.workflowScore(id) >= 6) { hasWorkflow = true; break; }
+            var hasWorkflow = root.core !== null
+                ? root.core.launchHasWorkflow(JSON.stringify(counts), clock.getDay(), clock.getHours(), 6)
+                : null;
+            if (hasWorkflow === null) {
+                hasWorkflow = false;
+                for (var id in counts) {                    if (rootItem.workflowScore(id) >= 6) { hasWorkflow = true; break; }
+                }
             }
             if (hasWorkflow) {
                 var now = new Date();
@@ -794,11 +821,14 @@ PlasmaCore.Dialog {
                 return i18n("%1 evening picks", dayName);
             }
             // Frequency-based fallback
-            var topCount = 0;
-            for (var aid in counts) {
-                var entry = counts[aid];
-                var t = (entry && typeof entry === "object") ? (entry.total || 0) : (entry || 0);
-                if (t > topCount) topCount = t;
+            var topCount = root.core !== null ? root.core.launchTopTotal(JSON.stringify(counts)) : null;
+            if (topCount === null) {
+                topCount = 0;
+                for (var aid in counts) {
+                    var entry = counts[aid];
+                    var t = (entry && typeof entry === "object") ? (entry.total || 0) : (entry || 0);
+                    if (t > topCount) topCount = t;
+                }
             }
             if (topCount >= 10) return i18n("Your top picks");
             if (topCount >= 5)  return i18n("Frequently used");
@@ -847,7 +877,7 @@ PlasmaCore.Dialog {
                         icon: "internet-web-browser",
                         title: i18n("Search the web for \"%1\"", q),
                         subtitle: i18n("Opens default browser"),
-                        action: "xdg-open 'https://duckduckgo.com/?q=" + encodeURIComponent(q) + "'"
+                        action: "xdg-open 'https://duckduckgo.com/?q=" + encodeURIComponent(q).replace(/'/g, "%27") + "'"
                     }];
                 }
             });
@@ -1047,7 +1077,14 @@ PlasmaCore.Dialog {
                 rows.push({ i: i, url: u, t: docEpochs[u] || 0 });
             }
             // plus récent d'abord ; sans date : à la fin, dans l'ordre d'usage de Plasma
-            rows.sort(function (a, b) { return (b.t - a.t) || (a.i - b.i); });
+            var order = root.core !== null ? root.core.docsSort(rows) : null;
+            if (order !== null) {
+                var ordered = [];
+                for (var o = 0; o < order.length; o++) ordered.push(rows[order[o]]);
+                rows = ordered;
+            } else {
+                rows.sort(function (a, b) { return (b.t - a.t) || (a.i - b.i); });
+            }
             for (var k = 0; k < rows.length; k++) {
                 var mi = m.index(rows[k].i, 0);
                 var deco = m.data(mi, kickerDecorationRole);
@@ -1122,23 +1159,32 @@ PlasmaCore.Dialog {
 
         readonly property string desktopListCmd: "for d in $(echo \"${XDG_DATA_HOME:-$HOME/.local/share}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:/var/lib/flatpak/exports/share:$HOME/.local/share/flatpak/exports/share\" | tr ':' ' '); do ls -1 \"$d/applications\" 2>/dev/null; done | grep '\\.desktop$' | sort -u"
 
-        function shq(s) { return "'" + String(s).replace(/'/g, "'\\''") + "'"; }
+        function shq(s) {
+            if (root.core !== null) return root.core.shellQuote(s);
+            return "'" + String(s).replace(/'/g, "'\\''") + "'";
+        }
 
         function saveKnownApps() { Plasmoid.configuration.knownApps = JSON.stringify(knownApps); }
         function saveNewApps() { Plasmoid.configuration.newApps = JSON.stringify(newApps); }
 
         function loadNewApps() {
             try { knownApps = JSON.parse(Plasmoid.configuration.knownApps || "[]"); } catch (e) { knownApps = []; }
+            var raw = Plasmoid.configuration.newApps || "{}";
             var stored = {};
-            try { stored = JSON.parse(Plasmoid.configuration.newApps || "{}"); } catch (e) { stored = {}; }
+            try { stored = JSON.parse(raw); } catch (e) { stored = {}; }
             // une nouveauté est oubliée après 7 jours
-            var keep = {}, changed = false, now = Date.now();
-            for (var k in stored) {
-                if (stored[k] && now - stored[k].t < 7 * 86400000) keep[k] = stored[k];
-                else changed = true;
+            var now = Date.now();
+            var keep = root.core !== null
+                ? root.core.newAppsPrune(raw, now, 7 * 86400000)
+                : null;
+            if (keep === null) {
+                keep = {};
+                for (var k in stored) {
+                    if (stored[k] && now - stored[k].t < 7 * 86400000) keep[k] = stored[k];
+                }
             }
             newApps = keep;
-            if (changed) saveNewApps();
+            if (JSON.stringify(keep) !== JSON.stringify(stored)) saveNewApps();
             newAppsLoaded = true;
         }
 
@@ -1148,6 +1194,21 @@ PlasmaCore.Dialog {
             if (knownApps.length === 0) {              // 1er passage : état de départ, sans notification
                 knownApps = list;
                 saveKnownApps();
+                return;
+            }
+            var difference = root.core !== null
+                ? root.core.newAppsDiff(knownApps, list)
+                : null;
+            if (difference !== null) {
+                if (!difference.changed) return;
+                knownApps = list;
+                saveKnownApps();
+                if (difference.added.length > 0) {
+                    pendingApps = pendingApps.concat(difference.added);
+                    pendingRounds = 0;
+                    resolveTimer.interval = 3000;
+                    resolveTimer.restart();
+                }
                 return;
             }
             var known = {};
@@ -1187,7 +1248,12 @@ PlasmaCore.Dialog {
                     }
                 }
             }
-            var missing = pendingApps.filter(function (id) { return !foundIds[id]; });
+            var missing = root.core !== null
+                ? root.core.newAppsMissing(pendingApps, Object.keys(foundIds))
+                : null;
+            if (missing === null) {
+                missing = pendingApps.filter(function (id) { return !foundIds[id]; });
+            }
             if (missing.length > 0 && pendingRounds < 10) {
                 // catalogue pas encore à jour : on réessaie un peu plus tard
                 pendingApps = missing;
@@ -1199,8 +1265,13 @@ PlasmaCore.Dialog {
                 pendingRounds = 0;
             }
             if (found.length === 0) return;
-            var updated = JSON.parse(JSON.stringify(newApps));
-            for (var f = 0; f < found.length; f++) updated[found[f].id] = { t: Date.now(), cat: found[f].cat, name: found[f].name };
+            var updated = root.core !== null
+                ? root.core.newAppsMark(JSON.stringify(newApps), found, Date.now())
+                : null;
+            if (updated === null) {
+                updated = JSON.parse(JSON.stringify(newApps));
+                for (var f = 0; f < found.length; f++) updated[found[f].id] = { t: Date.now(), cat: found[f].cat, name: found[f].name };
+            }
             newApps = updated;
             saveNewApps();
             notifyNewApps(found);
@@ -1219,15 +1290,23 @@ PlasmaCore.Dialog {
                        + (found.length > 4 ? "…" : "");
                 icon = "applications-other";
             }
-            var cmd = "(command -v notify-send >/dev/null 2>&1 && notify-send -a 'Menu Démarrer' -i " + shq(icon) + " -u low "
+            var cmd = root.core !== null ? root.core.cmdNotifySend(title, body, icon) : "";
+            if (cmd === "") {
+                cmd = "(command -v notify-send >/dev/null 2>&1 && notify-send -a 'Menu Démarrer' -i " + shq(icon) + " -u low "
                       + shq(title) + " " + shq(body) + ") || kdialog --title " + shq(title) + " --passivepopup " + shq(body) + " 8";
+            }
             notifySource.connectSource(cmd + " #" + Date.now());
         }
 
         function forgetNewApp(appId) {
             if (!newAppsReady || !newApps[appId]) return;
-            var updated = JSON.parse(JSON.stringify(newApps));
-            delete updated[appId];
+            var updated = root.core !== null
+                ? root.core.newAppsForget(JSON.stringify(newApps), appId)
+                : null;
+            if (updated === null) {
+                updated = JSON.parse(JSON.stringify(newApps));
+                delete updated[appId];
+            }
             newApps = updated;
             saveNewApps();
         }
@@ -1424,7 +1503,7 @@ PlasmaCore.Dialog {
                 if (root.searching && searchField.text.startsWith('/')) {
                     // Calculator result: copy to clipboard
                     if (commandPaletteContainer.calcResult !== "") {
-                        executable.exec("printf '%s' '" + commandPaletteContainer.calcResult + "' | xclip -selection clipboard 2>/dev/null || printf '%s' '" + commandPaletteContainer.calcResult + "' | xsel --clipboard --input 2>/dev/null");
+                        executable.exec("printf '%s' " + rootItem.shq(commandPaletteContainer.calcResult) + " | xclip -selection clipboard 2>/dev/null || printf '%s' " + rootItem.shq(commandPaletteContainer.calcResult) + " | xsel --clipboard --input 2>/dev/null");
                         root.toggle();
                         return;
                     }
@@ -1510,6 +1589,7 @@ PlasmaCore.Dialog {
         KdeConnectPanel {
             id: kdeConnectPanel
             menuWindow: root
+            core: root.core
         }
 
         // ── Bouton KDE Connect à droite de la recherche (action à brancher plus tard) ──
@@ -2561,6 +2641,10 @@ PlasmaCore.Dialog {
                         if (q === "") return rootItem.paletteCommands;
                         // Hide normal commands when in calc mode
                         if (calcQuery !== "") return [];
+                        var ranked = root.core !== null
+                            ? root.core.fuzzyRank(rootItem.paletteCommands, q)
+                            : null;
+                        if (ranked !== null) return ranked;
                         function fuzzyMatch(str, query) {
                             var qi = 0;
                             for (var ci = 0; ci < str.length && qi < query.length; ci++) {
@@ -2640,7 +2724,7 @@ PlasmaCore.Dialog {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                executable.exec("printf '%s' '" + commandPaletteContainer.calcResult + "' | xclip -selection clipboard 2>/dev/null || printf '%s' '" + commandPaletteContainer.calcResult + "' | xsel --clipboard --input 2>/dev/null");
+                                executable.exec("printf '%s' " + rootItem.shq(commandPaletteContainer.calcResult) + " | xclip -selection clipboard 2>/dev/null || printf '%s' " + rootItem.shq(commandPaletteContainer.calcResult) + " | xsel --clipboard --input 2>/dev/null");
                             }
                         }
                     }
@@ -3297,6 +3381,7 @@ PlasmaCore.Dialog {
             Footer {
                 id: footerContent
                 anchors.fill: parent
+                core: root.core
                 // le menu se ferme -> les fenêtres Compte / Alimentation aussi
                 Connections {
                     target: root

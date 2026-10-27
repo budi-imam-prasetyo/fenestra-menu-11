@@ -32,6 +32,7 @@ import org.kde.taskmanager as TaskManager
 Item {
     id: root
     readonly property var screenGeometry: plasmoid.screenGeometry
+    property var core: null
     readonly property bool inPanel: (plasmoid.location == PlasmaCore.Types.TopEdge
     || plasmoid.location == PlasmaCore.Types.RightEdge
     || plasmoid.location == PlasmaCore.Types.BottomEdge
@@ -196,6 +197,7 @@ Item {
 
     Component.onCompleted: {
         dashWindow = Qt.createQmlObject("MenuRepresentation {}", root);
+        dashWindow.core = root.core;
         // l'oreille est posée à la première ouverture du menu (la barre est prête)
         dashWindow.visibleChanged.connect(function() {
             if (dashWindow.visible) {
