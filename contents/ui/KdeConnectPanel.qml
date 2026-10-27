@@ -394,15 +394,20 @@ PlasmaCore.Dialog {
         return r;
     }
 
+    // Filtrage en JavaScript : le passage par le cœur natif impose de
+    // sérialiser toute la liste des contacts à chaque frappe, ce qui est bien
+    // plus lent que de parcourir le tableau déjà en mémoire (voir
+    // docs/native-core.md). Le cœur Rust ne fournit que l'analyse des vCards.
     function filterContacts(q) {
         var n = sansAccents(q).trim();
         if (n === "") { smsSuggestions = []; return; }
-        var nativeMatches = core !== null ? core.kdeconnectFilterContacts(contacts, q, 6) : null;
-        if (nativeMatches !== null) { smsSuggestions = nativeMatches; return; }
         var chiffres = n.replace(/[^0-9]/g, "");
         // numéros français : 06… et +33 6… sont équivalents
-        var autre = chiffres.indexOf("0") === 0 ? "33" + chiffres.slice(1)
-                  : chiffres.indexOf("33") === 0 ? "0" + chiffres.slice(2) : "";
+        // (un préfixe trop court ne compte pas : « 33 » ne doit pas valoir « 0 »)
+        var autre = chiffres.length >= 4
+                  ? (chiffres.indexOf("0") === 0 ? "33" + chiffres.slice(1)
+                  : chiffres.indexOf("33") === 0 ? "0" + chiffres.slice(2) : "")
+                  : "";
         var res = [];
         for (var i = 0; i < contacts.length && res.length < 6; i++) {
             var c = contacts[i];

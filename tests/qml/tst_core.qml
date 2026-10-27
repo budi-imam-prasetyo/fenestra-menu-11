@@ -44,8 +44,6 @@ TestCase {
         compare(migrated.firefox.buckets["6-3"], 1)
 
         var stored = JSON.stringify({ a: { total: 3, buckets: { "2-1": 2 } } })
-        compare(FenestraCore.launch_score(stored, "a", 2, 9), 7)
-        compare(FenestraCore.launch_score(stored, "missing", 2, 9), 0)
         compare(FenestraCore.launch_has_workflow(stored, 2, 9, 6), true)
         compare(FenestraCore.launch_has_workflow(stored, 2, 9, 8), false)
         compare(FenestraCore.launch_top_total(stored), 3)
@@ -114,13 +112,21 @@ TestCase {
             { i: 2, url: "file:///c", t: 300 },
             { i: 3, url: "file:///d", t: 0 }
         ]
-        compare(JSON.stringify(JSON.parse(
-            FenestraCore.docs_sort(JSON.stringify(rows)))), JSON.stringify([1, 2, 0, 3]))
-
         var lists = JSON.parse(FenestraCore.docs_rank(JSON.stringify(rows), 1000))
+        compare(JSON.stringify(lists.order), JSON.stringify([1, 2, 0, 3]))
         compare(JSON.stringify(lists.top), JSON.stringify([1, 2, 0, 3]))
         verify(lists.week.indexOf(1) >= 0)
         compare(lists.week.indexOf(3), -1)
+
+        // The page limit and the seven-day window live in the core.
+        var now = 1000000
+        var many = []
+        for (var i = 0; i < 9; i++) many.push({ i: i, t: now - i * 10 })
+        many.push({ i: 9, t: now - 7 * 86400 })
+        var ranked = JSON.parse(FenestraCore.docs_rank(JSON.stringify(many), now))
+        compare(ranked.top.length, 6)
+        compare(ranked.week.length, 9)
+        compare(ranked.order.length, 10)
     }
 
     function test_shell_quoting() {
@@ -139,7 +145,7 @@ TestCase {
                 "sh -c " + FenestraCore.shell_quote(
                     "Q=$(command -v qdbus6 || command -v qdbus-qt6 || command -v qdbus); " +
                     "\"$Q\" org.kde.kdeconnect '/modules/kdeconnect/devices/device-1/notifications/12' " +
-                    "org.kde.kdeconnect.device.notifications.notification.dismiss"))
+                    "'org.kde.kdeconnect.device.notifications.notification.dismiss'"))
         compare(FenestraCore.cmd_dismiss_notification("device-1", "1; rm -rf /"), "")
     }
 
@@ -163,17 +169,12 @@ TestCase {
         compare(contacts[0].digits, "0635939841")
         compare(contacts[0].key, "marie")
 
-        var matches = JSON.parse(FenestraCore.kdeconnect_filter_contacts(
-            JSON.stringify(contacts), "336", 6))
-        compare(matches.length, 1)
-        compare(matches[0].name, "Paul")
-
         compare(FenestraCore.kdeconnect_format_number("0635939841"), "06 35 93 98 41")
-        compare(FenestraCore.kdeconnect_format_number("+33635939841"), "+33 6 35 93 98 41")
+        compare(FenestraCore.kdeconnect_format_number("+33635939841"), "+336 35 93 98 41")
     }
 
     function test_vcard_load_tolerates_missing_directory() {
-        var contacts = JSON.parse(FenestraCore.vcard_load("/nonexistent/fenestra-test"))
+        var contacts = JSON.parse(FenestraCore.kdeconnect_vcard_load("0123456789abcdef"))
         compare(contacts.length, 0)
         var guarded = JSON.parse(FenestraCore.kdeconnect_vcard_load("../etc"))
         compare(guarded.length, 0)

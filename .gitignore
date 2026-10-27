@@ -4,3 +4,8 @@
 
 # QML module staged into the widget package by scripts/build-native.sh --stage
 /contents/ui/core/org/
+
+# Developer tooling output
+*.pyc
+__pycache__/
+rust/fenestra-qml/.qmlls.ini

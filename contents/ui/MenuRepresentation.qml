@@ -752,20 +752,18 @@ PlasmaCore.Dialog {
             return day + "-" + slot;
         }
 
-        // Returns a 0-10 score for how strongly an app matches the current time/day slot
+        // Returns a 0-10 score for how strongly an app matches the current time/day slot.
+        // Only used while the native core is unavailable: with the core the
+        // same rule is evaluated by launchHasWorkflow(), which avoids a JSON
+        // round trip per application.
         function workflowScore(appId) {
             if (!appId) return 0;
-            if (root.core !== null) {
-                var clock = new Date();
-                var nativeScore = root.core.launchScore(
-                    JSON.stringify(launchCounts), appId, clock.getDay(), clock.getHours());
-                if (nativeScore !== null) return nativeScore;
-            }
             var entry = launchCounts[appId];
             if (!entry || typeof entry !== "object") return 0;
             var bucket = currentBucket();
             var bucketCount = (entry.buckets && entry.buckets[bucket]) || 0;
-            var total = entry.total || 1;
+            var total = entry.total || 0;
+            if (total === 0) return 0;
             return Math.round((bucketCount / total) * 10);
         }
 
@@ -1076,13 +1074,20 @@ PlasmaCore.Dialog {
                 var u = String(m.data(m.index(i, 0), kickerUrlRole));
                 rows.push({ i: i, url: u, t: docEpochs[u] || 0 });
             }
-            // plus récent d'abord ; sans date : à la fin, dans l'ordre d'usage de Plasma
-            var order = root.core !== null ? root.core.docsSort(rows) : null;
-            if (order !== null) {
+            // Ordre d'affichage, page limitée et fenêtre « cette semaine » :
+            // la règle est dans le cœur Rust quand il est disponible.
+            var lists = root.core !== null ? root.core.docsRank(rows, now) : null;
+            var topRows = null, weekRows = null;
+            if (lists !== null) {
                 var ordered = [];
-                for (var o = 0; o < order.length; o++) ordered.push(rows[order[o]]);
+                for (var o = 0; o < lists.order.length; o++) ordered.push(rows[lists.order[o]]);
                 rows = ordered;
+                topRows = {};
+                for (var t = 0; t < lists.top.length; t++) topRows[lists.top[t]] = true;
+                weekRows = {};
+                for (var w = 0; w < lists.week.length; w++) weekRows[lists.week[w]] = true;
             } else {
+                // plus récent d'abord ; sans date : à la fin, dans l'ordre d'usage de Plasma
                 rows.sort(function (a, b) { return (b.t - a.t) || (a.i - b.i); });
             }
             for (var k = 0; k < rows.length; k++) {
@@ -1098,8 +1103,12 @@ PlasmaCore.Dialog {
                     disabled: false,
                     srcRow: rows[k].i
                 };
-                if (k < 6) docsTopModel.append(entry);
-                if (rows[k].t > 0 && now - rows[k].t < 7 * 86400) docsWeekModel.append(entry);
+                var inTop = lists !== null ? topRows[rows[k].i] === true : k < 6;
+                var inWeek = lists !== null
+                    ? weekRows[rows[k].i] === true
+                    : (rows[k].t > 0 && now - rows[k].t < 7 * 86400);
+                if (inTop) docsTopModel.append(entry);
+                if (inWeek) docsWeekModel.append(entry);
             }
         }
 
