@@ -14,10 +14,10 @@ Part of the **Fenestra** series, designed in particular for people coming from W
 - **All apps** in three views: **List**, **Grid** or **Categories** (one tile per category), switchable from the menu.
 - Select **All apps** or a category to filter the browsing list. Applications in several categories appear once in each relevant filter. Search temporarily shows global runner results; clearing the query restores the selected category. In Categories view, selecting a filter shows that category's app list.
 - Menu width adapts to the screen: 6, 7 or 8 columns (below 1900 px, 1900–2499 px, 2500 px and above).
-- **Search** for apps, files, settings and actions, with filters, web search, a built-in calculator (`/calc`) and `Alt+1–9` to launch a result.
+- **Search** for apps and settings, with filters, web search, a built-in calculator (`/calc`) and `Alt+1–9` to launch a result.
 - Optional shell command runner (`> command`) and optional quick actions bar (screenshot, lock, terminal…).
 - Footer with your **account** (avatar, name, manage account, other users) and a **power** menu (lock, sleep, hibernate, shut down, restart, sign out). Hibernate appears only when the running system reports that hibernation is available.
-- **New** badge on newly installed apps.
+- **New** badge on newly installed apps, with a small dot on the matching category buttons until the app is opened.
 
 ### Mobile device panel (KDE Connect)
 
@@ -103,8 +103,8 @@ for the architecture, API, measurements, build/install details and limitations.
 
 Category filtering uses KDE's existing Kicker category model in both native and
 QML-only installations. The former recent-document settings are retired in
-version 1.4.0; existing pinned items, recently launched apps and file search
-remain available.
+version 1.4.0. Search in version 1.4.2 is limited to applications and settings.
+Pinned items and recently launched apps remain available.
 
 ## Tests
 
@@ -151,3 +151,6 @@ Run `sh scripts/test-menu.sh` on a Plasma 6 workstation with Qt and Plasma
 development packages. It loads the real applet with isolated settings and checks
 List/Grid button clicks, wheel scrolling over icons, alphabet navigation,
 search typing and clearing. Screenshots are saved under `build/menu-tests/`.
+
+List and Grid cache their catalog data and render only visible rows. The UI test
+accepts `--benchmark` on its built `check` executable to time view switches.

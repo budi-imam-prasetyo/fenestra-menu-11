@@ -162,24 +162,9 @@ PlasmoidItem {
          runners: {
              if (kicker.searchRunnerFilter === "apps")
                  return ["krunner_services"];
-             if (kicker.searchRunnerFilter === "files")
-                 return ["baloosearch", "bookmarks"];
              if (kicker.searchRunnerFilter === "settings")
                  return ["krunner_systemsettings"];
-             if (kicker.searchRunnerFilter === "actions")
-                 return ["krunner_sessions", "krunner_powerdevil", "calculator", "unitconverter"];
-
-             const results = ["krunner_services",
-                              "krunner_systemsettings",
-                              "krunner_sessions",
-                              "krunner_powerdevil",
-                              "calculator",
-                              "unitconverter"];
-             if (Plasmoid.configuration.enableShellRunner)
-                 results.push("krunner_shell");
-             if (Plasmoid.configuration.useExtraRunners)
-                 results.push(...Plasmoid.configuration.extraRunners);
-             return results;
+             return ["krunner_services", "krunner_systemsettings"];
          }
      }
 

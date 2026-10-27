@@ -31,6 +31,11 @@ FocusScope {
     signal folderEditRequested(int index)
 
     property bool _folderEditPressed: false
+    // Keep a full-height layout item while rendering only the visible rows.
+    property bool virtualized: false
+    property real viewportHeight: height
+    property real viewportOffset: 0
+    readonly property int renderedItemCount: gridView.contentItem.children.length
     property bool scrollEnabled: true
     property bool dragEnabled: true
     property bool dropEnabled: false
@@ -253,8 +258,9 @@ FocusScope {
 
             //anchors.fill: parent
             width: itemGrid.width
-            height: itemGrid.height
-
+            y: itemGrid.virtualized ? itemGrid.viewportOffset : 0
+            height: itemGrid.virtualized ? itemGrid.viewportHeight : itemGrid.height
+            clip: true
 
             focus: true
 
@@ -268,7 +274,15 @@ FocusScope {
                 property var favoritesModelOverride: itemGrid.favoritesModelOverride
 
                 width:  itemGrid.width                
-                height: itemGrid.height
+                height: scrollArea.height
+
+                Binding {
+                    target: gridView
+                    property: "contentY"
+                    when: itemGrid.virtualized
+                    value: itemGrid.viewportOffset
+                    restoreMode: Binding.RestoreBindingOrValue
+                }
 
                 signal itemContainsMouseChanged(bool containsMouse)
 
@@ -279,6 +293,8 @@ FocusScope {
 
                 focus: true
 
+                reuseItems: itemGrid.virtualized
+                cacheBuffer: itemGrid.virtualized ? itemGrid.cellHeight : 320
                 currentIndex: -1
 
                 move: Transition {

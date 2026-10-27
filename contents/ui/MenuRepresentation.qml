@@ -137,6 +137,7 @@ PlasmaCore.Dialog {
     // Fenestra : chargements après l'affichage : appelés juste après l'ouverture
     function chargerApresOuverture(force) {
         if (!root.visible && !force) return;
+        if (!rootItem.newAppsLoaded) rootItem.loadNewApps();
         rootItem.loadFolders();
         rootItem.loadAllAppsFolders();
         rootItem.loadLaunchCounts();
@@ -305,6 +306,7 @@ PlasmaCore.Dialog {
             property string iconName: ""
             property bool flat: false          // gardés pour compatibilité avec AToolButton
             property int buttonHeight: 25
+            property bool showNewDot: false
             property bool iconLeft: false      // icône avant le texte
             signal clicked()
 
@@ -344,6 +346,18 @@ PlasmaCore.Dialog {
                     height: width
                     animated: false
                 }
+            }
+
+            Rectangle {
+                objectName: "categoryButtonNewDot"
+                visible: sectionBtn.showNewDot
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 2
+                width: 7
+                height: width
+                radius: width / 2
+                color: Kirigami.Theme.highlightColor
             }
 
             MouseArea {
@@ -461,10 +475,10 @@ PlasmaCore.Dialog {
         function setAppsViewMode(mode) {
             scrollAnim.stop();
             letterScrollAnim.stop();
+            if (Plasmoid.configuration.allAppsViewMode === mode) return;
             Plasmoid.configuration.allAppsViewMode = mode;
             allAppsGrid.contentY = 0;
             allAppsGrid.currentIndex = -1;
-            buildAllAppsCombo();
             mainFlick.contentY = 0;
         }
 
@@ -509,7 +523,8 @@ PlasmaCore.Dialog {
 
         function buildAllAppsCombo() {
             // Rebuild only when the catalog, sort mode or folder data changes.
-            allAppsComboModel.clear();
+            allAppsListModel.clear();
+            allAppsGridModel.clear();
             if (!sortedAppsModel.sourceModel) return;
 
             var displayRole    = kickerDisplayRole;
@@ -597,59 +612,82 @@ PlasmaCore.Dialog {
                 combined = (sortMode === 2) ? folderRows.concat(appRows) : appRows.concat(folderRows);
             }
 
-            if (sortMode === 0 || sortMode === 1) { // séparateurs A/B/C... aussi en mode Grille
-                var withHeaders = [];
-                var lastLetter = null;
-                // nombre de colonnes réel de la grille (1 en mode Liste : jamais de complément nécessaire)
-                var gridCols = (Plasmoid.configuration.allAppsViewMode === 1 && allAppsGrid.columnsCount > 1)
-                               ? allAppsGrid.columnsCount : 1;
-                for (var hi = 0; hi < combined.length; hi++) {
-                    var row = combined[hi];
-                    var name = row.display || "";
-                    var letter = name.length > 0 ? name[0].toUpperCase() : "#";
-                    if (letter < "A" || letter > "Z") letter = "#";
-                    if (letter !== lastLetter) {
-                        if (gridCols > 1 && withHeaders.length % gridCols !== 0) {
-                            var manque = gridCols - (withHeaders.length % gridCols);
-                            for (var bi = 0; bi < manque; bi++) {
-                                withHeaders.push({
-                                    itemType: "blank",
-                                    display: "", decoration: "", favoriteId: "", description: "", url: "",
-                                    disabled: true, hasActionList: false,
-                                    sourceRow: -1, folderIdx: -1, indented: false, expanded: false
-                                });
-                            }
-                        }
-                        withHeaders.push({
-                            itemType: "letterHeader",
-                            display: letter,
-                            decoration: "",
-                            favoriteId: "",
-                            description: "",
-                            url: "",
-                            disabled: false, hasActionList: false,
-                            sourceRow: -1, folderIdx: -1, indented: false, expanded: false
-                        });
-                        // complète le reste de la ligne : la lettre occupe toute la rangée à elle seule
-                        if (gridCols > 1) {
-                            for (var bi2 = 0; bi2 < gridCols - 1; bi2++) {
-                                withHeaders.push({
-                                    itemType: "blank",
-                                    display: "", decoration: "", favoriteId: "", description: "", url: "",
-                                    disabled: true, hasActionList: false,
-                                    sourceRow: -1, folderIdx: -1, indented: false, expanded: false
-                                });
-                            }
-                        }
-                        lastLetter = letter;
-                    }
-                    withHeaders.push(row);
-                }
-                combined = withHeaders;
+            if (sortMode === 0 || sortMode === 1) {
+                allAppsListModel.append(withAppHeaders(combined, 1));
+                allAppsGridModel.append(withAppHeaders(combined, root.colonnesAuto));
+            } else if (combined.length > 0) {
+                allAppsListModel.append(combined);
+                allAppsGridModel.append(combined);
             }
+        }
 
-            for (var ci = 0; ci < combined.length; ci++) allAppsComboModel.append(combined[ci]);
-            // Keep the view bound to a stable model; category switches do not rebuild this list.
+        Timer {
+            id: appsCacheRefresh
+            interval: 0
+            onTriggered: {
+                rootItem.buildAllAppsCombo();
+                rootItem.rebuildSelectedCategory();
+            }
+        }
+        Connections {
+            target: sortedAppsModel
+            function onModelReset() { appsCacheRefresh.restart(); }
+            function onLayoutChanged() { appsCacheRefresh.restart(); }
+            function onRowsInserted() { appsCacheRefresh.restart(); }
+            function onRowsRemoved() { appsCacheRefresh.restart(); }
+            function onDataChanged() { appsCacheRefresh.restart(); }
+        }
+        Connections {
+            target: root
+            function onColonnesAutoChanged() { appsCacheRefresh.restart(); }
+        }
+
+        function withAppHeaders(combined, gridCols) {
+            var withHeaders = [];
+            var lastLetter = null;
+            for (var hi = 0; hi < combined.length; hi++) {
+                var row = combined[hi];
+                var name = row.display || "";
+                var letter = name.length > 0 ? name[0].toUpperCase() : "#";
+                if (letter < "A" || letter > "Z") letter = "#";
+                if (letter !== lastLetter) {
+                    if (gridCols > 1 && withHeaders.length % gridCols !== 0) {
+                        var manque = gridCols - (withHeaders.length % gridCols);
+                        for (var bi = 0; bi < manque; bi++) {
+                            withHeaders.push({
+                                itemType: "blank",
+                                display: "", decoration: "", favoriteId: "", description: "", url: "",
+                                disabled: true, hasActionList: false,
+                                sourceRow: -1, folderIdx: -1, indented: false, expanded: false
+                            });
+                        }
+                    }
+                    withHeaders.push({
+                        itemType: "letterHeader",
+                        display: letter,
+                        decoration: "",
+                        favoriteId: "",
+                        description: "",
+                        url: "",
+                        disabled: false, hasActionList: false,
+                        sourceRow: -1, folderIdx: -1, indented: false, expanded: false
+                    });
+                    // complète le reste de la ligne : la lettre occupe toute la rangée à elle seule
+                    if (gridCols > 1) {
+                        for (var bi2 = 0; bi2 < gridCols - 1; bi2++) {
+                            withHeaders.push({
+                                itemType: "blank",
+                                display: "", decoration: "", favoriteId: "", description: "", url: "",
+                                disabled: true, hasActionList: false,
+                                sourceRow: -1, folderIdx: -1, indented: false, expanded: false
+                            });
+                        }
+                    }
+                    lastLetter = letter;
+                }
+                withHeaders.push(row);
+            }
+            return withHeaders;
         }
 
         // Descend récursivement dans les sous-catégories d'un modèle (ex: Jeux -> Arcade
@@ -685,19 +723,19 @@ PlasmaCore.Dialog {
         }
 
         function toggleFolderExpand(folderComboIdx) {
-            if (folderComboIdx < 0 || folderComboIdx >= allAppsComboModel.count) return;
-            var entry = allAppsComboModel.get(folderComboIdx);
+            if (folderComboIdx < 0 || folderComboIdx >= rootItem.allAppsComboModel.count) return;
+            var entry = rootItem.allAppsComboModel.get(folderComboIdx);
             if (entry.itemType !== "folder") return;
             var fi = entry.folderIdx;
             if (fi < 0 || fi >= allAppsFoldersData.length) return;
             var folder = allAppsFoldersData[fi];
 
             if (!entry.expanded) {
-                allAppsComboModel.set(folderComboIdx, { expanded: true });
+                rootItem.allAppsComboModel.set(folderComboIdx, { expanded: true });
                 var items = folder.items || [];
                 for (var i = 0; i < items.length; i++) {
                     var info = lookupAppInfo(items[i]);
-                    allAppsComboModel.insert(folderComboIdx + 1 + i, {
+                    rootItem.allAppsComboModel.insert(folderComboIdx + 1 + i, {
                         itemType:    "app",
                         display:     info.name,
                         decoration:  info.decoration,
@@ -709,10 +747,10 @@ PlasmaCore.Dialog {
                     });
                 }
             } else {
-                allAppsComboModel.set(folderComboIdx, { expanded: false });
-                while (folderComboIdx + 1 < allAppsComboModel.count) {
-                    var next = allAppsComboModel.get(folderComboIdx + 1);
-                    if (next.indented && next.folderIdx === fi) allAppsComboModel.remove(folderComboIdx + 1);
+                rootItem.allAppsComboModel.set(folderComboIdx, { expanded: false });
+                while (folderComboIdx + 1 < rootItem.allAppsComboModel.count) {
+                    var next = rootItem.allAppsComboModel.get(folderComboIdx + 1);
+                    if (next.indented && next.folderIdx === fi) rootItem.allAppsComboModel.remove(folderComboIdx + 1);
                     else break;
                 }
             }
@@ -1053,15 +1091,14 @@ PlasmaCore.Dialog {
                 var sub = categoryRootModel.modelForRow(c);
                 if (!sub) continue;
                 var catName = String(categoryRootModel.data(categoryRootModel.index(c, 0), Qt.DisplayRole) || sub.description || "");
-                for (var r = 0; r < sub.rowCount(); r++) {
-                    var idx = sub.index(r, 0);
-                    var fid = String(sub.data(idx, kickerFavoriteIdRole) || "");
+                var entries = [];
+                collectCategoryApps(sub, entries, {});
+                for (var r = 0; r < entries.length; r++) {
+                    var entry = entries[r];
+                    var fid = entry.favoriteId;
                     if (want[fid] && !foundIds[fid]) {
                         foundIds[fid] = true;
-                        found.push({ id: fid,
-                                     name: String(sub.data(idx, kickerDisplayRole) || fid),
-                                     icon: sub.data(idx, kickerDecorationRole),
-                                     cat: catName });
+                        found.push({ id: fid, name: entry.display, icon: entry.decoration, cat: catName });
                     }
                 }
             }
@@ -1175,6 +1212,7 @@ PlasmaCore.Dialog {
             interval: 60000
             repeat: true
             running: rootItem.newAppsReady
+            triggeredOnStart: true
             onTriggered: {
                 appsWatch.poll();
             }
@@ -1217,10 +1255,17 @@ PlasmaCore.Dialog {
         }
 
         ListModel {
-            id: allAppsComboModel
+            id: allAppsListModel
             // Exposes favoritesModel so delegates can Pin/Unpin via the same KActivities model
             property var favoritesModel: sortedAppsModel.favoritesModel
         }
+
+        ListModel {
+            id: allAppsGridModel
+            property var favoritesModel: sortedAppsModel.favoritesModel
+        }
+        readonly property var allAppsComboModel: Plasmoid.configuration.allAppsViewMode === 1
+                                                ? allAppsGridModel : allAppsListModel
 
         ListModel {
             id: categoryAppsModel
@@ -1231,6 +1276,22 @@ PlasmaCore.Dialog {
         property string activeCategoryName: ""
         property var availableCategories: [{ row: -1, label: i18n("All apps") }]
         property var categoryMembership: ({})
+
+        readonly property var categoriesWithNewApps: {
+            var marked = {};
+            var pendingIds = Object.keys(newApps);
+            for (var row in categoryMembership) {
+                var members = categoryMembership[row];
+                for (var i = 0; i < pendingIds.length; i++) {
+                    if (members[pendingIds[i]]) {
+                        marked[row] = true;
+                        marked[-1] = true;
+                        break;
+                    }
+                }
+            }
+            return marked;
+        }
 
         function refreshAvailableCategories() {
             var choices = [{ row: -1, label: i18n("All apps") }];
@@ -1312,7 +1373,7 @@ PlasmaCore.Dialog {
                 rightMargin: Kirigami.Units.smallSpacing * 2 + 10   // compense le décalage du bouton
             }
             focus: true
-            placeholderText: i18n("Search for apps, settings and documents")
+            placeholderText: i18n("Search for apps and settings")
             topPadding: 10
             bottomPadding: 10
             leftPadding: Kirigami.Units.gridUnit + Kirigami.Units.iconSizes.small
@@ -2143,6 +2204,7 @@ PlasmaCore.Dialog {
                             required property var modelData
                             required property int index
                             readonly property bool selected: rootItem.activeCategoryRow === modelData.row
+                            readonly property bool hasNew: !!rootItem.categoriesWithNewApps[modelData.row]
                             width: Math.min(categoryFilters.width - 2, chipLabel.implicitWidth + Kirigami.Units.gridUnit * 2)
                             height: categoryFilters.height - Kirigami.Units.smallSpacing
                             radius: Math.min(height / 2, Kirigami.Units.gridUnit)
@@ -2156,6 +2218,7 @@ PlasmaCore.Dialog {
                             Accessible.role: Accessible.Button
                             Accessible.name: modelData.label
                             Accessible.checked: selected
+                            Accessible.description: hasNew ? i18n("New applications") : ""
                             function activate() {
                                 chip.forceActiveFocus();
                                 categoryFilters.currentIndex = index;
@@ -2190,6 +2253,17 @@ PlasmaCore.Dialog {
                                 font.weight: chip.selected ? Font.DemiBold : Font.Normal
                                 elide: Text.ElideRight
                                 width: Math.min(implicitWidth, chip.width - Kirigami.Units.gridUnit)
+                            }
+                            Rectangle {
+                                objectName: "categoryNewDot_" + chip.modelData.row
+                                visible: chip.hasNew
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                anchors.margins: 4
+                                width: 6
+                                height: width
+                                radius: width / 2
+                                color: chip.selected ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.highlightColor
                             }
                             MouseArea {
                                 anchors.fill: parent
@@ -2285,6 +2359,7 @@ PlasmaCore.Dialog {
                     }
                     SectionButton {
                         id: viewModeButton
+                        showNewDot: !!rootItem.categoriesWithNewApps[-1]
                         iconName: "go-down"
                         text: i18n("Categories")
                         onClicked: {
@@ -2316,13 +2391,17 @@ PlasmaCore.Dialog {
                     ItemGridView {
                         id: allAppsGrid
                         objectName: "allAppsGrid"
+                        virtualized: true
+                        viewportHeight: Math.min(height, mainFlick.height)
+                        viewportOffset: Math.max(0, Math.min(height - viewportHeight,
+                                                            mainFlick.contentY - allAppsGridContainer.y))
                         scrollEnabled: false
                         onWheelUnhandled: delta => mainFlick.scrollBy(delta)
                         whiteHighlight: true // surlignement blanc 50 %
                         width: parent.width
                         readonly property int columnsCount: cellWidth > 0 ? Math.max(1, Math.floor(width / cellWidth)) : 1
                         // la grille ne défile plus : elle prend toute sa hauteur, c'est la page qui défile
-                        height: Math.max(1, Math.ceil((rootItem.activeCategoryRow < 0 ? allAppsComboModel.count : categoryAppsModel.count) / columnsCount)) * cellHeight
+                        height: Math.max(1, Math.ceil((rootItem.activeCategoryRow < 0 ? rootItem.allAppsComboModel.count : categoryAppsModel.count) / columnsCount)) * cellHeight
                         itemColumns: Plasmoid.configuration.allAppsViewMode === 1 ? 1 : 2
                         labels2lines: Plasmoid.configuration.allAppsViewMode === 1 && Plasmoid.configuration.labels2lines
                         dragEnabled: true
@@ -2336,7 +2415,7 @@ PlasmaCore.Dialog {
                                     : root.iconSize + Kirigami.Units.gridUnit + Kirigami.Units.largeSpacing
                         iconSize: root.iconSize
                         clip: true
-                        model: rootItem.activeCategoryRow < 0 ? allAppsComboModel : categoryAppsModel
+                        model: rootItem.activeCategoryRow < 0 ? rootItem.allAppsComboModel : categoryAppsModel
                         onKeyNavUp: {
                             allAppsGrid.focus = false;
                             categoryFilters.currentIndex = 0;
@@ -2421,9 +2500,7 @@ PlasmaCore.Dialog {
                             model: [
                                 { key: "all",      label: i18n("All")      },
                                 { key: "apps",     label: i18n("Apps")     },
-                                { key: "files",    label: i18n("Files")    },
-                                { key: "settings", label: i18n("Settings") },
-                                { key: "actions",  label: i18n("Actions")  }
+                                { key: "settings", label: i18n("Settings") }
                             ]
 
                             delegate: Item {
@@ -2889,7 +2966,7 @@ PlasmaCore.Dialog {
                             if (kicker.searchRunnerFilter !== "all") {
                                 return i18n("No results for \"%1\" in %2",
                                             searchField.text,
-                                            ({ apps: i18n("Apps"), files: i18n("Files"), settings: i18n("Settings"), actions: i18n("Actions") })[kicker.searchRunnerFilter] || kicker.searchRunnerFilter);
+                                            ({ apps: i18n("Apps"), settings: i18n("Settings") })[kicker.searchRunnerFilter] || kicker.searchRunnerFilter);
                             }
                             return i18n("No results for \"%1\"", searchField.text);
                         }
@@ -2964,7 +3041,6 @@ PlasmaCore.Dialog {
                 Qt.callLater(function () {
                     rootItem.setAppsViewMode(mode);
                     if (mode === 2) root.ensureCategoryModel();
-                    else rootItem.buildAllAppsCombo();
                 });
             }
 
@@ -3305,7 +3381,7 @@ PlasmaCore.Dialog {
         Connections {
             target: allAppsGrid
             function onItemActivated(index, actionId, argument) {
-                var activeModel = rootItem.activeCategoryRow < 0 ? allAppsComboModel : categoryAppsModel;
+                var activeModel = rootItem.activeCategoryRow < 0 ? rootItem.allAppsComboModel : categoryAppsModel;
                 if (index < 0 || index >= activeModel.count) return;
                 var entry = activeModel.get(index);
                 if (entry.itemType === "letterHeader") return;
@@ -3335,12 +3411,12 @@ PlasmaCore.Dialog {
         Connections {
             target: allAppsGrid
             function onFolderEditRequested(index) {
-                if (rootItem.activeCategoryRow >= 0 || index < 0 || index >= allAppsComboModel.count) return
-                var entry = allAppsComboModel.get(index)
+                if (rootItem.activeCategoryRow >= 0 || index < 0 || index >= rootItem.allAppsComboModel.count) return
+                var entry = rootItem.allAppsComboModel.get(index)
                 if (!entry || entry.itemType !== "folder") return
                 var cols = Math.max(1, Math.floor(allAppsGrid.width / allAppsGrid.cellWidth))
                 var row = Math.floor(index / cols)
-                var itemY = row * allAppsGrid.cellHeight - allAppsGrid.contentY
+                var itemY = row * allAppsGrid.cellHeight
                 var p = allAppsGrid.mapToItem(rootItem, allAppsGrid.width * 0.55,
                                               itemY + allAppsGrid.cellHeight)
                 rootItem.openFolderAppPicker(entry.folderIdx, p.x, p.y)
@@ -4446,14 +4522,14 @@ PlasmaCore.Dialog {
     }
 
     function scrollToLetter(letter) {
-        if ((rootItem.activeCategoryRow < 0 ? allAppsComboModel.count : categoryAppsModel.count) === 0) return;
+        if ((rootItem.activeCategoryRow < 0 ? rootItem.allAppsComboModel.count : categoryAppsModel.count) === 0) return;
 
         alphabetOverlay.currentLetter = letter;
         alphabetOverlay.opacity = 1;
         overlayTimer.restart();
 
         var targetIndex = -1;
-        var activeModel = rootItem.activeCategoryRow < 0 ? allAppsComboModel : categoryAppsModel;
+        var activeModel = rootItem.activeCategoryRow < 0 ? rootItem.allAppsComboModel : categoryAppsModel;
         for (var i = 0; i < activeModel.count; i++) {
             var entry = activeModel.get(i);
             if (entry.indented) continue;  // skip expanded folder children

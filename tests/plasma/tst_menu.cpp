@@ -4,6 +4,10 @@
 #include <QTimer>
 #include <QDebug>
 #include <QWheelEvent>
+#include <QElapsedTimer>
+#include <QSignalSpy>
+#include <functional>
+#include <algorithm>
 #include <QQmlContext>
 #include <QQmlExpression>
 #include <QtTest/QTest>
@@ -45,6 +49,22 @@ int main(int argc, char **argv) {
    if (expression.hasError()) { qCritical() << expression.error(); std::exit(8); }
    return value;
  };
+ if (app.arguments().contains("--benchmark")) {
+   QList<qint64> samples;
+   for (int mode : {1,0,1,0,1,0,1,0}) {
+     QElapsedTimer timer;
+     timer.start();
+     eval(QString("rootItem.setAppsViewMode(%1)").arg(mode));
+     QCoreApplication::processEvents();
+     samples.append(timer.elapsed());
+     QTest::qWait(50);
+   }
+   std::sort(samples.begin(), samples.end());
+   qInfo() << "SWITCH_BENCHMARK_MEDIAN_MS" << samples[samples.size()/2]
+           << "MAX_MS" << samples.last();
+   popup->setProperty("visible", false);
+   return 0;
+ }
  int failures = 0;
  auto check = [&](const QString &name, const QString &source) {
    bool ok = eval(source).toBool();
@@ -76,12 +96,42 @@ int main(int argc, char **argv) {
  QCoreApplication::sendEvent(popupWindow, &wheel);
  QTest::qWait(100);
  check("page scroll moves", "mainFlick.contentY > 0");
- check("inner grid stays fixed", "allAppsGrid.contentY === 0");
+ check("visible rows track outer scroll", "Math.abs(allAppsGrid.contentY - allAppsGrid.viewportOffset) < 1");
  eval("root.scrollToLetter('S')"); QTest::qWait(260);
- check("alphabet scroll moves page", "mainFlick.contentY > 200 && allAppsGrid.contentY === 0");
+ if (popupWindow) popupWindow->grabWindow().save(output + "/scrolled-grid.png");
+ check("alphabet scroll moves page", "mainFlick.contentY > 200 && Math.abs(allAppsGrid.contentY - allAppsGrid.viewportOffset) < 1");
  eval("mainFlick.contentY = 0"); QTest::qWait(100);
  clickButton("appsListButton");
  check("list selected", "Plasmoid.configuration.allAppsViewMode === 0 && allAppsGrid.columnsCount === 1");
+ check("list virtualizes delegates", "allAppsGrid.renderedItemCount < allAppsGrid.count");
+ auto listModel = eval("allAppsListModel").value<QObject*>();
+ QSignalSpy resets(listModel, SIGNAL(modelReset()));
+ QSignalSpy removals(listModel, SIGNAL(rowsRemoved(QModelIndex,int,int)));
+ QElapsedTimer switchTimer;
+ qint64 slowestSwitch = 0;
+ for (int mode : {1,0,1,0,1,0}) {
+   switchTimer.start();
+   eval(QString("rootItem.setAppsViewMode(%1)").arg(mode));
+   QCoreApplication::processEvents();
+   slowestSwitch = qMax(slowestSwitch, switchTimer.elapsed());
+ }
+ qInfo() << "SLOWEST_LIST_GRID_SWITCH_MS" << slowestSwitch;
+ check("switch keeps catalog cache", resets.count() == 0 && removals.count() == 0 ? "true" : "false");
+ check("only app and setting runners", "runnerModel.runners.length === 2 && runnerModel.runners.indexOf('krunner_services') >= 0 && runnerModel.runners.indexOf('krunner_systemsettings') >= 0");
+ eval("rootItem.newApps = {}; var rows = rootItem.availableCategories; var row = rows[1].row; var fid = Object.keys(rootItem.categoryMembership[row])[0]; var marked = {}; marked[fid] = {t: Date.now(), cat: rows[1].label, name: fid}; rootItem.newApps = marked;");
+ QTest::qWait(100);
+ check("category badge marks matching category", "!!rootItem.categoriesWithNewApps[rootItem.availableCategories[1].row]");
+ check("category badge marks all apps", "!!rootItem.categoriesWithNewApps[-1]");
+ std::function<QQuickItem*(QQuickItem*, const QString&)> findVisual = [&](QQuickItem *parent, const QString &name) -> QQuickItem* {
+   if (parent->objectName() == name) return parent;
+   for (auto child : parent->childItems()) if (auto found = findVisual(child, name)) return found;
+   return nullptr;
+ };
+ auto dot = findVisual(popupWindow->contentItem(), "categoryNewDot_" + eval("rootItem.availableCategories[1].row").toString());
+ check("category dot visible", dot && dot->isVisible() ? "true" : "false");
+ if (popupWindow) popupWindow->grabWindow().save(output + "/category-badge.png");
+ eval("rootItem.forgetNewApp(Object.keys(rootItem.newApps)[0])");
+ check("badge clears when app acknowledged", "Object.keys(rootItem.categoriesWithNewApps).length === 0");
  auto fieldItem = qobject_cast<QQuickItem*>(field);
  fieldItem->forceActiveFocus();
  for (QChar c : QStringLiteral("dolphin")) QTest::keyClick(popupWindow, static_cast<Qt::Key>(c.toUpper().unicode())); QTest::qWait(2000);
