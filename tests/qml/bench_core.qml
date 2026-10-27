@@ -18,9 +18,7 @@ TestCase {
     name: "FenestraCoreBench"
 
     property var commands: []
-    property var commandsJson: ""
     property var rows: []
-    property var rowsJson: ""
     readonly property int commandCount: 200
     readonly property int rowCount: 60
 
@@ -33,8 +31,6 @@ TestCase {
             })
         }
         for (var r = 0; r < rowCount; r++) rows.push({ i: r, url: "file:///doc" + r, t: 1700000000 - r * 3600 })
-        commandsJson = JSON.stringify(commands)
-        rowsJson = JSON.stringify(rows)
     }
 
     // ── JavaScript fallbacks (kept identical to the widget's QML) ──────────
@@ -79,14 +75,15 @@ TestCase {
     }
 
     function benchmark_rust_command_palette() {
-        return JSON.parse(FenestraCore.fuzzy_rank(commandsJson, "set")).length
+        return JSON.parse(FenestraCore.fuzzy_rank(JSON.stringify(commands), "set")).length
     }
 
     function benchmark_js_document_ordering() {
-        return jsDocs(rows).length
+        return jsDocs(rows)
     }
 
     function benchmark_rust_document_ordering() {
-        return JSON.parse(FenestraCore.docs_rank(rowsJson, 1700003600)).top.length
+        var result = JSON.parse(FenestraCore.docs_rank(JSON.stringify(rows), 1700003600))
+        return result.top.length + result.week.length
     }
 }

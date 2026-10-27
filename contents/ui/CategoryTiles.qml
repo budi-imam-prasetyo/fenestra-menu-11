@@ -30,10 +30,10 @@ Item {
     readonly property int revision: (typeof rootItem !== "undefined") ? rootItem.categoryRevision : 0
 
     readonly property int favoriteIdRole: Qt.UserRole + 3
-    readonly property int columnsCount: 4
-    readonly property real gap: Kirigami.Units.gridUnit
+    readonly property int columnsCount: Math.max(2, Math.floor(width / 142))
+    readonly property real gap: Design.space3
     readonly property real tileWidth: Math.max(60, Math.floor((width - gap * (columnsCount - 1)) / columnsCount))
-    readonly property real tileHeight: Math.round(tileWidth * 0.97)
+    readonly property real tileHeight: Math.max(96, Math.round(tileWidth * 0.78))
     readonly property real labelHeight: Math.round(Kirigami.Units.gridUnit * 1.6)
 
     signal openCategory(int row, string title, real sceneX, real sceneY)
@@ -86,8 +86,20 @@ Item {
                 height: tiles.tileHeight + tiles.labelHeight
                 visible: appCount > 0
 
+                property bool dirty: true
+                function invalidate() {
+                    dirty = true;
+                    if (tiles.visible) rebuildTimer.restart();
+                }
+                Timer {
+                    id: rebuildTimer
+                    interval: 0
+                    onTriggered: if (tiles.visible) cat.rebuild()
+                }
+
                 // applis de la catégorie : dernière utilisation (dans ce menu) d'abord, puis ordre alphabétique
                 function rebuild() {
+                    dirty = false;
                     var list = [];
                     if (sub && typeof rootItem !== "undefined") {
                         var flat = [];
@@ -129,23 +141,24 @@ Item {
                     root.toggle();
                 }
 
-                onAppCountChanged: rebuild()
-                onSubChanged: rebuild()
-                Component.onCompleted: rebuild()
+                onAppCountChanged: invalidate()
+                onSubChanged: invalidate()
+                Component.onCompleted: invalidate()
+                Connections { target: tiles; function onVisibleChanged() { if (tiles.visible && cat.dirty) rebuildTimer.restart(); } }
 
                 Connections {
                     target: (typeof rootItem !== "undefined") ? rootItem : null
-                    function onLaunchCountsChanged() { cat.rebuild(); }
+                    function onLaunchCountsChanged() { cat.invalidate(); }
                 }
 
                 Rectangle {
                     id: tileBg
                     width: parent.width
                     height: tiles.tileHeight
-                    radius: 8
-                    color: (bgHover.hovered && !tiles.flyoutOpen) ? (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#33ffffff" : "#a6ffffff") : (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff")
+                    radius: Design.radius
+                    color: bgMouse.pressed ? Design.pressed : (bgHover.hovered && !tiles.flyoutOpen) ? Design.hover : Design.elevated
                     border.width: 1
-                    border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
+                    border.color: Design.border
                     Behavior on color { ColorAnimation { duration: 100 } }
 
                     HoverHandler { id: bgHover }
@@ -182,10 +195,10 @@ Item {
                                 Rectangle {
                                     anchors.fill: parent
                                     anchors.margins: 2
-                                    radius: 5
-                                    color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff") // surlignement-tuiles-v1
+                                    radius: Design.radius
+                                    color: Design.border // surlignement-tuiles-v1
                                     border.width: 1
-                                    border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
+                                    border.color: Design.border
                                     visible: cell.app !== null || cell.isCluster
                                     opacity: (cellHover.hovered && !tiles.flyoutOpen) ? 1.0 : 0.0
                                     Behavior on opacity { NumberAnimation { duration: 100 } }
@@ -258,7 +271,7 @@ Item {
                     radius: width / 2
                     color: Kirigami.Theme.highlightColor
                     border.width: 1
-                    border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff")
+                    border.color: Design.border
                     anchors.top: tileBg.top
                     anchors.right: tileBg.right
                     anchors.margins: Kirigami.Units.smallSpacing + 3

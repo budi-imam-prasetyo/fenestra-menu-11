@@ -30,6 +30,7 @@ FocusScope {
     signal itemActivated(int index, string actionId, string argument)
     signal folderEditRequested(int index)
 
+    readonly property int pressedIndex: hoverArea.pressedItem ? hoverArea.pressedItem.itemIndex : -1
     property bool _folderEditPressed: false
     // Keep a full-height layout item while rendering only the visible rows.
     property bool virtualized: false
@@ -70,8 +71,8 @@ FocusScope {
         return typeof rootItem !== "undefined" && rootItem.keyNavRecently();
     }
     onDropEnabledChanged: {
-        if (!dropEnabled && "dropPlaceHolderIndex" in model) {
-            model.dropPlaceHolderIndex = -1;
+        if (!dropEnabled && model && "dropPlaceholderIndex" in model) {
+            model.dropPlaceholderIndex = -1;
         }
     }
 
@@ -117,6 +118,19 @@ FocusScope {
         }
     }
 
+    function activate(index) {
+        if (index < 0 || index >= count) return;
+        var delegate = gridView.itemAtIndex(index);
+        if (delegate && (delegate.isLetterHeader || delegate.isBlank)) return;
+        if (delegate && delegate.favoriteId) rootItem.recordLaunch(delegate.favoriteId);
+        if (model && typeof model.trigger === "function") {
+            model.trigger(index, "", null);
+            root.toggle();
+        } else {
+            itemActivated(index, "", null);
+        }
+    }
+
     function forceLayout() {
         gridView.forceLayout();
     }
@@ -127,6 +141,7 @@ FocusScope {
 
     ActionMenu {
         id: actionMenu
+        objectName: "launcherActionMenu"
 
         onActionClicked: {
             visualParent.actionTriggered(actionId, actionArgument);
@@ -165,7 +180,7 @@ FocusScope {
                                if (item) {
                                    if (kicker.dragSource.parent === gridView.contentItem) {
                                        if (item !== kicker.dragSource) {
-                                           item.GridView.view.model.moveRow(dragSource.itemIndex, item.itemIndex);
+                                           item.GridView.view.model.moveRow(kicker.dragSource.itemIndex, item.itemIndex);
                                        }
                                    } else if (kicker.dragSource.GridView.view.model.favoritesModel === itemGrid.model
                                               && !itemGrid.model.isFavorite(kicker.dragSource.favoriteId)) {
@@ -356,18 +371,7 @@ FocusScope {
                 }
 
                 delegate: itemColumns == 1 ? aItemGridDelegate : aItemGridDelegate2
-                highlight: Item {
-                    Rectangle {
-                        anchors.fill: parent
-                        color: itemGrid.whiteHighlight ? (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff")
-                        : Qt.rgba(Kirigami.Theme.highlightColor.r,
-                        Kirigami.Theme.highlightColor.g,
-                        Kirigami.Theme.highlightColor.b, 0.18)
-                        border.width: itemGrid.whiteHighlight ? 1 : 0
-                        border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
-                        radius: itemGrid.whiteHighlight ? 5 : 6
-                    }
-                }
+                highlight: null
 
                 highlightFollowsCurrentItem: true
                 highlightMoveDuration: 0
@@ -386,6 +390,15 @@ FocusScope {
 
                 onModelChanged: {
                     currentIndex = -1;
+                }
+
+                Keys.onReturnPressed: event => { event.accepted = true; itemGrid.activate(currentIndex); }
+                Keys.onEnterPressed: event => { event.accepted = true; itemGrid.activate(currentIndex); }
+                Keys.onMenuPressed: event => {
+                    if (currentItem && currentItem.hasActionList) {
+                        event.accepted = true;
+                        currentItem.openActionMenu(currentItem.width / 2, currentItem.height / 2);
+                    }
                 }
 
                 Keys.onLeftPressed: event => {
@@ -497,8 +510,8 @@ FocusScope {
                     gridView.currentIndex = -1;
                     pressedItem = null;
                 } else {
-                    itemGrid.focus = (item.itemIndex !== -1)
-                    itemGrid.forceActiveFocus() //<>
+                    if (itemGrid._keyNavRecently()) itemGrid.focus = (item.itemIndex !== -1)
+                    if (itemGrid._keyNavRecently()) itemGrid.forceActiveFocus()
                     gridView.currentIndex = item.itemIndex;
                 }
 
@@ -554,16 +567,7 @@ FocusScope {
 
                             if (!dragHelper.dragging) {
                                 if (pressedItem) {
-                                    if (pressedItem.favoriteId && pressedItem.favoriteId !== "" &&
-                                        typeof rootItem !== "undefined") {
-                                        rootItem.recordLaunch(pressedItem.favoriteId);
-                                    }
-                                    if ("trigger" in gridView.model) {
-                                        gridView.model.trigger(pressedItem.itemIndex, "", null);
-                                        root.toggle();
-                                    }
-
-                                    itemGrid.itemActivated(pressedItem.itemIndex, "", null);
+                                    itemGrid.activate(pressedItem.itemIndex);
                                 }
                                 // Fenestra : clic dans le vide sans fermeture (le menu d'origine se fermait ici)
                             }

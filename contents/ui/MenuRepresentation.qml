@@ -62,14 +62,9 @@ PlasmaCore.Dialog {
     // Fenestra : largeur de la fenêtre donnée à l'ouverture (voir onVisibleChanged)
     height: Math.max(rootItem.height, 200)
 
-    // Fenestra : colonnes automatiques : 6 sous 1900 px, 7 pour un écran 1920, 8 à partir de 2500 px
-    // (largeur de l'écran en pixels logiques, mise à l'échelle comprise)
-    readonly property int colonnesAuto: {
-        var w = kicker.screenGeometry.width;
-        if (w >= 2500) return 8;
-        if (w >= 1900) return 7;
-        return 6;
-    }
+    // Columns follow the available content width and configured application size.
+    readonly property int colonnesAuto: Math.max(3, Math.floor((rootItem.width - Design.space5 * 2)
+                                                               / Math.max(88, iconSize + Design.space4 * 2, Design.fontPixels * 6)))
 
     property int iconSize: {
         switch (Plasmoid.configuration.appsIconSize) {
@@ -86,8 +81,8 @@ PlasmaCore.Dialog {
         }
     }
 
-    property int cellSizeHeight: iconSize + Kirigami.Units.gridUnit * 2 + (2 * Math.max(highlightItemSvg.margins.top + highlightItemSvg.margins.bottom, highlightItemSvg.margins.left + highlightItemSvg.margins.right))
-    property int cellSizeWidth: cellSizeHeight + Kirigami.Units.gridUnit
+    property int cellSizeHeight: Design.tileHeight(iconSize)
+    property int cellSizeWidth: Math.floor((rootItem.width - Design.space5 * 2) / colonnesAuto)
 
     property bool searching: searchField.text.trim().length > 0
 
@@ -294,80 +289,12 @@ PlasmaCore.Dialog {
         property double lastNavKeyTime: 0
         function keyNavRecently() { return Date.now() - lastNavKeyTime < 400; }
         // bord gauche commun de toutes les rubriques (= bord de la 1re icône épinglée, icône centrée dans sa cellule)
-        property int sectionInset: Math.max(0, Math.round((globalFavoritesGrid.cellWidth - root.iconSize) / 2))
+        property int sectionInset: 0
         // marge interne gauche des lignes de recommandations / de la liste « Tout » (icône décalée dans sa ligne)
         property int listIconPad: Math.round(Kirigami.Units.gridUnit / 2)
 
-        // Bouton d'en-tête de section : sans cadre, surlignement blanc 50 % au survol
-        // (même fond que le cadre des boutons d'applis de la barre des tâches)
-        component SectionButton: Item {
-            id: sectionBtn
-            property string text: ""
-            property string iconName: ""
-            property bool flat: false          // gardés pour compatibilité avec AToolButton
-            property int buttonHeight: 25
-            property bool showNewDot: false
-            property bool iconLeft: false      // icône avant le texte
-            signal clicked()
+        component SectionButton: LauncherButton {}
 
-            implicitWidth: btnRow.implicitWidth + Kirigami.Units.largeSpacing * 2
-            implicitHeight: buttonHeight
-            Accessible.role: Accessible.Button
-            Accessible.name: text
-
-            Rectangle {
-                anchors.fill: parent
-                radius: 5
-                color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff")
-                border.width: 1                 // même bordure que les autres surlignements
-                border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
-                opacity: btnMouse.containsMouse ? 1.0 : 0.0
-                Behavior on opacity { NumberAnimation { duration: 100 } }
-            }
-
-            Row {
-                id: btnRow
-                anchors.centerIn: parent
-                spacing: Kirigami.Units.smallSpacing
-                layoutDirection: sectionBtn.iconLeft ? Qt.RightToLeft : Qt.LeftToRight
-
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: sectionBtn.text
-                    color: Kirigami.Theme.textColor
-                    font.pointSize: Kirigami.Theme.defaultFont.pointSize
-                }
-
-                Kirigami.Icon {
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: sectionBtn.iconName !== ""
-                    source: sectionBtn.iconName
-                    width: Kirigami.Units.iconSizes.small
-                    height: width
-                    animated: false
-                }
-            }
-
-            Rectangle {
-                objectName: "categoryButtonNewDot"
-                visible: sectionBtn.showNewDot
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.margins: 2
-                width: 7
-                height: width
-                radius: width / 2
-                color: Kirigami.Theme.highlightColor
-            }
-
-            MouseArea {
-                id: btnMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: sectionBtn.clicked()
-            }
-        }
         property int pinnedTotalPages: globalFavoritesGrid.count > 0
             ? Math.max(1, Math.ceil(globalFavoritesGrid.count / pinnedItemsPerPage))
             : 1
@@ -384,12 +311,12 @@ PlasmaCore.Dialog {
 
         // Fenestra : largeur stable : 733 px de contenu pour 7 colonnes (+ 12 px de cadre = 745 px), en proportion sinon
         // Fenestra : marges latérales réduites : 8 px de marge de chaque côté (18 à l'origine)
-        readonly property int margeCote: 8
+        readonly property int margeCote: Design.space5
         // contenu : 697 px d'icônes pour 7 colonnes + 2 marges = 713 px (+ 12 px de cadre = 725 px de fenêtre)
-        readonly property int largeurVoulue: Math.round(697 * root.colonnesAuto / 7) + 2 * margeCote
+        readonly property int largeurVoulue: Math.min(kicker.screenGeometry.width >= 1900 ? 780 : 680, Math.max(320, kicker.availableScreenRect.width - Design.space5 * 2))
         width: largeurVoulue
         // hauteur souhaitée de la page qui défile (la hauteur réelle s'adapte à la place disponible)
-        readonly property real viewWanted: Kirigami.Units.gridUnit * 38
+        readonly property real viewWanted: Kirigami.Units.gridUnit * 34
 
         height: Math.min(view.y + rootItem.viewWanted + footer.height, Math.max(200, kicker.availableScreenRect.height - Kirigami.Units.largeSpacing * 2))   // hauteur demandée : haut de la page + page souhaitée + pied (+ 0 px)
 
@@ -472,14 +399,28 @@ PlasmaCore.Dialog {
             return id.startsWith("preferred://") ? "emblem-default" : id.replace(/\.desktop$/, "");
         }
 
+        property var viewScrollOffsets: ({})
         function setAppsViewMode(mode) {
+            var previous = Plasmoid.configuration.allAppsViewMode;
+            if (previous === mode) return;
             scrollAnim.stop();
             letterScrollAnim.stop();
-            if (Plasmoid.configuration.allAppsViewMode === mode) return;
+            mainFlick.cancelFlick();
+            var offsets = viewScrollOffsets;
+            offsets[previous] = mainFlick.contentY;
+            var selection = allAppsGrid.currentIndex >= 0 ? allAppsGrid.model.get(allAppsGrid.currentIndex).favoriteId : "";
             Plasmoid.configuration.allAppsViewMode = mode;
-            allAppsGrid.contentY = 0;
             allAppsGrid.currentIndex = -1;
-            mainFlick.contentY = 0;
+            if (mode === 2) { root.ensureCategoryModel(); root.setCategoryModel(); }
+            if (selection) {
+                for (var i = 0; i < allAppsGrid.count; i++) {
+                    if (allAppsGrid.model.get(i).favoriteId === selection) { allAppsGrid.currentIndex = i; break; }
+                }
+            }
+            Qt.callLater(function () {
+                if (Plasmoid.configuration.allAppsViewMode === mode)
+                    mainFlick.contentY = Math.max(0, Math.min(mainFlick.contentHeight - mainFlick.height, offsets[mode] || 0));
+            });
         }
 
         property bool _needsComboRebuild: false
@@ -614,7 +555,7 @@ PlasmaCore.Dialog {
 
             if (sortMode === 0 || sortMode === 1) {
                 allAppsListModel.append(withAppHeaders(combined, 1));
-                allAppsGridModel.append(withAppHeaders(combined, root.colonnesAuto));
+                if (combined.length > 0) allAppsGridModel.append(combined);
             } else if (combined.length > 0) {
                 allAppsListModel.append(combined);
                 allAppsGridModel.append(combined);
@@ -625,6 +566,7 @@ PlasmaCore.Dialog {
             id: appsCacheRefresh
             interval: 0
             onTriggered: {
+                rootItem.categoryRowsCache = ({});
                 rootItem.buildAllAppsCombo();
                 rootItem.rebuildSelectedCategory();
             }
@@ -829,6 +771,7 @@ PlasmaCore.Dialog {
 
         // ── Smart Context ────────────────────────────────────────────────────
         property string contextLabel: {
+            if (!Plasmoid.configuration.showRecentApps) return "";
             var counts = rootItem.launchCounts;
             var clock = new Date();
             // Check for workflow pattern: any app with bucket score >= 6
@@ -1211,7 +1154,7 @@ PlasmaCore.Dialog {
             id: appsWatchTimer
             interval: 60000
             repeat: true
-            running: rootItem.newAppsReady
+            running: rootItem.newAppsReady && root.visible
             triggeredOnStart: true
             onTriggered: {
                 appsWatch.poll();
@@ -1276,6 +1219,7 @@ PlasmaCore.Dialog {
         property string activeCategoryName: ""
         property var availableCategories: [{ row: -1, label: i18n("All apps") }]
         property var categoryMembership: ({})
+        property var categoryRowsCache: ({})
 
         readonly property var categoriesWithNewApps: {
             var marked = {};
@@ -1294,7 +1238,8 @@ PlasmaCore.Dialog {
         }
 
         function refreshAvailableCategories() {
-            var choices = [{ row: -1, label: i18n("All apps") }];
+            categoryRowsCache = ({});
+            var choices = [{ row: -1, label: i18n("All apps"), icon: "applications-all" }];
             var membership = {};
             for (var row = 0; row < categoryRootModel.rowCount(); row++) {
                 var sub = categoryRootModel.modelForRow(row);
@@ -1307,7 +1252,7 @@ PlasmaCore.Dialog {
                 var ids = {};
                 for (var i = 0; i < items.length; i++) ids[items[i].favoriteId] = true;
                 membership[row] = ids;
-                choices.push({ row: row, label: name });
+                choices.push({ row: row, label: name, icon: String(categoryRootModel.data(categoryRootModel.index(row, 0), Qt.DecorationRole) || "applications-other") });
             }
             categoryMembership = membership;
             availableCategories = choices;
@@ -1325,6 +1270,9 @@ PlasmaCore.Dialog {
         function rebuildSelectedCategory() {
             categoryAppsModel.clear();
             if (activeCategoryRow < 0 || !sortedAppsModel.sourceModel) return;
+            var cached = categoryRowsCache[activeCategoryRow];
+            if (cached) { if (cached.length) categoryAppsModel.append(cached); return; }
+            var rows = [];
             var ids = categoryMembership[activeCategoryRow] || {};
             var seen = {};
             for (var i = 0; i < sortedAppsModel.rowCount(); i++) {
@@ -1332,7 +1280,7 @@ PlasmaCore.Dialog {
                 var fid = String(sortedAppsModel.data(idx, kickerFavoriteIdRole) || "");
                 if (!fid || !ids[fid] || seen[fid]) continue;
                 seen[fid] = true;
-                categoryAppsModel.append({
+                rows.push({
                     itemType: "app",
                     display: String(sortedAppsModel.data(idx, kickerDisplayRole) || ""),
                     decoration: sortedAppsModel.data(idx, kickerDecorationRole) || "",
@@ -1343,6 +1291,8 @@ PlasmaCore.Dialog {
                     sourceRow: i, folderIdx: -1, indented: false, expanded: false
                 });
             }
+            categoryRowsCache[activeCategoryRow] = rows;
+            if (rows.length) categoryAppsModel.append(rows);
         }
 
         function selectCategory(row) {
@@ -1366,25 +1316,25 @@ PlasmaCore.Dialog {
             objectName: "searchField"
             anchors {
                 top: parent.top
-                topMargin: Kirigami.Units.gridUnit - 10
+                topMargin: Design.space4
                 left: parent.left
-                leftMargin: rootItem.margeCote + 20   // Fenestra : recherche décalée
+                leftMargin: rootItem.margeCote   // Fenestra : recherche décalée
                 right: kdeConnectButton.left
-                rightMargin: Kirigami.Units.smallSpacing * 2 + 10   // compense le décalage du bouton
+                rightMargin: Design.space3   // compense le décalage du bouton
             }
             focus: true
             placeholderText: i18n("Search for apps and settings")
-            topPadding: 10
-            bottomPadding: 10
+            topPadding: Design.space3
+            bottomPadding: Design.space3
             leftPadding: Kirigami.Units.gridUnit + Kirigami.Units.iconSizes.small
             text: ""
             font.pointSize: Kirigami.Theme.defaultFont.pointSize
 
             background: Rectangle {
                 color: Kirigami.Theme.backgroundColor
-                radius: 20
-                border.width: 1
-                border.color: colorWithAlpha(Kirigami.Theme.textColor, 0.05)
+                radius: Design.radius
+                border.width: searchField.activeFocus ? 2 : 1
+                border.color: searchField.activeFocus ? Design.focus : Design.border
             }
 
             onTextChanged: {
@@ -1486,38 +1436,16 @@ PlasmaCore.Dialog {
                     return;
                 }
                 if (view.currentIndex === 1) {
-                    // On search results page, activate the first available item
-                    runnerGrid.focus = true;
-
-                    // Find the first grid with items and activate its first item
                     for (var i = 0; i < runnerGrid.count; i++) {
                         var grid = runnerGrid.subGridAt(i);
                         if (grid && grid.count > 0) {
-                            grid.currentIndex = 0;
-                            grid.focus = true;
-
-                       
-                            if ("trigger" in grid.model) {
-                                //console.log("Calling grid.model.trigger(0)");
-                                grid.model.trigger(0, "", null);
-                                root.toggle();
-                            }
+                            grid.activate(0);
                             return;
-                        }
-                    }
-                } else {
-                    // Original logic for other pages
-                    for (var i = 0; i < runnerGrid.count; i++) {
-                        var grid = runnerGrid.subGridAt(i)
-                        if (grid && grid.count > 0) {
-                            grid.currentIndex = 0
-                            grid.focus = true
-                            grid.itemActivated(0, "", null)
-                            return
                         }
                     }
                 }
             }
+
             function backspace() {
                 if (!root.visible) {
                     return;
@@ -1559,47 +1487,20 @@ PlasmaCore.Dialog {
             core: root.core
         }
 
-        // ── Bouton KDE Connect à droite de la recherche (action à brancher plus tard) ──
-        Item {
+        LauncherButton {
             id: kdeConnectButton
             anchors {
                 top: searchField.top
                 right: parent.right
-                rightMargin: rootItem.margeCote   // Fenestra : bouton aligné sur la marge réduite (était décalé de 10 px vers la droite)
+                rightMargin: rootItem.margeCote
             }
             height: searchField.height
             width: height
-            Accessible.role: Accessible.Button
-            Accessible.name: "KDE Connect"
-
-            Rectangle {
-                anchors.fill: parent
-                radius: 5
-                color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff")
-                border.width: 1
-                border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
-                opacity: (kdeConnectMouse.containsMouse || kdeConnectPanel.visible) ? 1.0 : 0.0
-                Behavior on opacity { NumberAnimation { duration: 100 } }
-            }
-
-            Kirigami.Icon {
-                anchors.centerIn: parent
-                width: Kirigami.Units.iconSizes.smallMedium
-                height: width
-                source: Qt.resolvedUrl("../icons/status/fenestra-kdeconnect.svg")
-            }
-
-            MouseArea {
-                id: kdeConnectMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                acceptedButtons: Qt.LeftButton
-                onClicked: root.basculerVolet()   // Fenestra : ordre du recentrage
-            }
-
-            PC3.ToolTip.text: "KDE Connect"
-            PC3.ToolTip.visible: kdeConnectMouse.containsMouse
-            PC3.ToolTip.delay: 400
+            text: "KDE Connect"
+            iconName: Qt.resolvedUrl("../icons/status/fenestra-kdeconnect.svg").toString()
+            showLabel: false
+            selected: kdeConnectPanel.visible
+            onClicked: root.basculerVolet()
         }
 
         // ── Quick Actions Bar ────────────────────────────────────────────────
@@ -1615,7 +1516,6 @@ PlasmaCore.Dialog {
             clip: true
             height: (root.searching || !Plasmoid.configuration.showQuickActions) ? 0 : qaRow.implicitHeight + Kirigami.Units.smallSpacing
 
-            Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
             Row {
                 id: qaRow
@@ -1632,14 +1532,11 @@ PlasmaCore.Dialog {
                         { icon: "preferences-system",  tip: i18n("System Settings"), cmd: "systemsettings" }
                     ]
 
-                    delegate: PC3.ToolButton {
-                        icon.name: modelData.icon
-                        display: AbstractButton.IconOnly
-                        PC3.ToolTip.text: modelData.tip
-                        PC3.ToolTip.visible: hovered
-                        PC3.ToolTip.delay: 400
-                        opacity: hovered ? 1.0 : 0.55
-                        Behavior on opacity { NumberAnimation { duration: 100 } }
+                    delegate: LauncherButton {
+                        iconName: modelData.icon
+                        text: modelData.tip
+                        showLabel: false
+                        width: Design.controlHeight
                         onClicked: {
                             executable.exec(modelData.cmd);
                             root.toggle();
@@ -1681,20 +1578,19 @@ PlasmaCore.Dialog {
             color: colorWithAlpha(Kirigami.Theme.textColor, 0.15)
         }
 
-        SwipeView {
+        StackLayout {
             id: view
-
-            interactive: false
+            readonly property Item currentItem: currentIndex === 0 ? mainFlick : searchPage
             currentIndex: 0
             clip: true
 
             anchors {
                 top: searchSeparator.bottom
-                topMargin: Kirigami.Units.smallSpacing + 10
+                topMargin: Design.space4
                 left: parent.left
                 leftMargin: rootItem.margeCote
                 right: parent.right
-                rightMargin: -searchSeparator.extRight
+                rightMargin: rootItem.margeCote
             }
             onCurrentIndexChanged: {
                 globalFavoritesGrid.currentIndex = -1;
@@ -1706,8 +1602,6 @@ PlasmaCore.Dialog {
             Flickable {
                 id: mainFlick
                 objectName: "mainFlick"
-                width: view.width
-                height: view.height
                 contentWidth: mainColumn.width
                 contentHeight: mainColumn.implicitHeight
                 clip: true
@@ -1715,7 +1609,7 @@ PlasmaCore.Dialog {
                 flickableDirection: Flickable.VerticalFlick
                 onContentYChanged: rootItem.noteScrolling()
 
-                PC3.ScrollBar.vertical: PC3.ScrollBar {}
+                PC3.ScrollBar.vertical: PC3.ScrollBar { id: mainScrollBar }
 
                 function tryActivate(row, col) {
                     if (!rootItem.pinnedCollapsed)
@@ -1725,6 +1619,7 @@ PlasmaCore.Dialog {
                 }
 
                 function scrollBy(delta) {
+                    cancelFlick();
                     scrollAnim.stop();
                     letterScrollAnim.stop();
                     contentY = Math.max(0, Math.min(contentHeight - height, contentY - delta));
@@ -1733,6 +1628,8 @@ PlasmaCore.Dialog {
                 onContentHeightChanged: contentY = Math.max(0, Math.min(contentY, contentHeight - height))
 
                 function scrollTo(y) {
+                    cancelFlick();
+                    letterScrollAnim.stop();
                     var maxY = Math.max(0, contentHeight - height);
                     scrollAnim.stop();
                     scrollAnim.to = Math.max(0, Math.min(y, maxY));
@@ -1758,21 +1655,21 @@ PlasmaCore.Dialog {
 
                 Column {
                 id: mainColumn
-                width: rootItem.width - rootItem.margeCote * 2
-                spacing: Kirigami.Units.largeSpacing
+                width: Math.max(0, mainFlick.width - Math.max(Design.space4, mainScrollBar.implicitWidth) - Design.space2)
+                spacing: Design.space3
 
                 RowLayout {
                     id: topRow
-                    visible: globalFavoritesGrid.count > 0 || rootItem.pinnedFoldersData.length > 0
+                    visible: true
                     x: rootItem.sectionInset
                     // + largeSpacing + 5 : compense le padding interne du bouton (comme Catégories)
-                    width: parent.width - rootItem.sectionInset * 2 + Kirigami.Units.largeSpacing + 5
+                    width: parent.width
 
-                    PlasmaExtras.Heading {
-                        color: colorWithAlpha(Kirigami.Theme.textColor, 0.8)
-                        level: 5
+                    PC3.Label {
+                        color: Design.text
+                        font.pointSize: Design.headingSize
                         text: i18n("Pinned")
-                        font.weight: Font.Bold
+                        font.weight: Font.DemiBold
                         Layout.alignment: Qt.AlignVCenter
                     }
 
@@ -1786,7 +1683,7 @@ PlasmaCore.Dialog {
                         flat: false
                         iconName: rootItem.pinnedCollapsed ? "go-down" : "go-up"
                         text: rootItem.pinnedCollapsed ? i18n("Show more") : i18n("Show less")
-                        buttonHeight: 25
+                        buttonHeight: Design.controlHeight
                         onClicked: rootItem.pinnedCollapsed = !rootItem.pinnedCollapsed
                     }
                 }
@@ -1799,7 +1696,7 @@ PlasmaCore.Dialog {
                     visible: count > 0
                     clip: true   // coupe net les rangées au-delà du repli
                     width: parent.width
-                    height: count > 0 ? root.cellSizeHeight * Math.min(rootItem.pinnedCollapsed ? rootItem.pinnedCollapsedRows : Plasmoid.configuration.numberRows, Math.ceil(count / root.colonnesAuto)) : 0
+                    height: count > 0 ? root.cellSizeHeight * Math.min(rootItem.pinnedCollapsed ? rootItem.pinnedCollapsedRows : Math.max(1, Plasmoid.configuration.numberRows), Math.ceil(count / root.colonnesAuto)) : 0
                     itemColumns: 1
                     dragEnabled: true
                     dropEnabled: true
@@ -1868,6 +1765,25 @@ PlasmaCore.Dialog {
                     }
                 }
 
+                RowLayout {
+                    objectName: "pinnedEmptyState"
+                    visible: globalFavoritesGrid.count === 0 && rootItem.pinnedFoldersData.length === 0
+                    width: parent.width
+                    height: visible ? Design.rowHeight(root.iconSize) : 0
+                    spacing: Design.space3
+                    Kirigami.Icon {
+                        source: "bookmark-new"
+                        Layout.preferredWidth: Design.actionIcon
+                        Layout.preferredHeight: Design.actionIcon
+                    }
+                    PC3.Label {
+                        text: i18n("Pin your favorite apps from their context menu")
+                        color: Design.secondaryText
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                }
+
                 // Page indicator dots for pinned apps pagination
                 Item {
                     visible: !rootItem.pinnedCollapsed && rootItem.pinnedTotalPages > 1
@@ -1926,7 +1842,7 @@ PlasmaCore.Dialog {
 
                         delegate: Item {
                             id: folderTile
-                            width: root.cellSizeWidth
+                            width: globalFavoritesGrid.cellWidth
                             height: root.cellSizeHeight
 
                             property var fd: rootItem.pinnedFoldersData[index] || {name:"", items:[]}
@@ -1971,8 +1887,8 @@ PlasmaCore.Dialog {
                                 // Icon mosaic
                                 Item {
                                     id: mosaicBox
-                                    width: Kirigami.Units.iconSizes.medium
-                                    height: Kirigami.Units.iconSizes.medium
+                                    width: root.iconSize
+                                    height: root.iconSize
                                     anchors.horizontalCenter: parent.horizontalCenter
 
                                     Rectangle {
@@ -2012,10 +1928,10 @@ PlasmaCore.Dialog {
 
                                 // Folder name
                                 Text {
-                                    width: root.cellSizeWidth - Kirigami.Units.largeSpacing * 2
+                                    width: folderTile.width - Design.space3 * 2
                                     text: folderTile.fd.name
                                     color: Kirigami.Theme.textColor
-                                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.85
+                                    font.pointSize: Design.fontSize
                                     horizontalAlignment: Text.AlignHCenter
                                     elide: Text.ElideRight
                                     maximumLineCount: 1
@@ -2074,6 +1990,100 @@ PlasmaCore.Dialog {
                     }
                 }
 
+                // ── Plugin UI Sections ──────────────────────────────────────
+                Column {
+                    id: pluginSectionsColumn
+                    width: parent.width
+                    spacing: Kirigami.Units.largeSpacing
+                    visible: pluginSectionsRepeater.count > 0
+
+                    Repeater {
+                        id: pluginSectionsRepeater
+                        model: PluginSystem.uiSections()
+
+                        delegate: Item {
+                            width: pluginSectionsColumn.width
+                            height: sectionLoader.implicitHeight + Kirigami.Units.largeSpacing
+
+                            // Section header
+                            Row {
+                                id: sectionHeader
+                                spacing: Kirigami.Units.smallSpacing
+
+                                Kirigami.Icon {
+                                    source: "plugins"
+                                    implicitWidth: Kirigami.Units.iconSizes.smallMedium
+                                    implicitHeight: Kirigami.Units.iconSizes.smallMedium
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                PlasmaExtras.Heading {
+                                    level: 5
+                                    text: modelData.name
+                                    color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.8)
+                                    font.weight: Font.DemiBold
+                                }
+                            }
+
+                            Loader {
+                                id: sectionLoader
+                                anchors.top: sectionHeader.bottom
+                                anchors.topMargin: Kirigami.Units.smallSpacing
+                                width: parent.width
+                                sourceComponent: modelData.component
+                            }
+                        }
+                    }
+                }
+
+                // ── Tout (ex-page « Toutes les applications ») ──────────────
+                RowLayout {
+                    id: allAppsHeader
+                    objectName: "allAppsHeader"
+                    width: parent.width
+                    spacing: Design.space3
+                    implicitHeight: Design.controlHeight
+                    PC3.Label {
+                        text: i18n("Applications")
+                        font.pointSize: Design.headingSize
+                        font.weight: Font.DemiBold
+                        color: Design.text
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                    }
+                    Row {
+                        id: viewSelector
+                        objectName: "viewModeSelector"
+                        spacing: Design.space1
+                        Repeater {
+                            id: viewButtons
+                            model: [
+                                { mode: 0, name: i18n("List"), icon: "view-list-details", key: "appsListButton" },
+                                { mode: 1, name: i18n("Grid"), icon: "view-grid", key: "appsGridButton" },
+                                { mode: 2, name: i18n("Categories"), icon: "view-list-icons", key: "appsCategoriesButton" }
+                            ]
+                            delegate: LauncherButton {
+                                required property var modelData
+                                required property int index
+                                objectName: modelData.key
+                                text: modelData.name
+                                iconName: modelData.icon
+                                showLabel: rootItem.width >= 600
+                                selected: Plasmoid.configuration.allAppsViewMode === modelData.mode
+                                showNewDot: modelData.mode === 2 && !!rootItem.categoriesWithNewApps[-1]
+                                onClicked: rootItem.setAppsViewMode(modelData.mode)
+                                Keys.onRightPressed: {
+                                    var next = viewButtons.itemAt((index + 1) % 3);
+                                    next.forceActiveFocus(); next.clicked();
+                                }
+                                Keys.onLeftPressed: {
+                                    var next = viewButtons.itemAt((index + 2) % 3);
+                                    next.forceActiveFocus(); next.clicked();
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Keep only the space occupied by recent apps and category filters.
                 Item {
                     id: categoryControls
@@ -2085,7 +2095,7 @@ PlasmaCore.Dialog {
                         ? Kirigami.Units.iconSizes.medium + Kirigami.Units.largeSpacing * 3
                         : 0
 
-                    height: recentAppsStripHeight + categoryFilters.height
+                    height: recentAppsStripHeight + Design.controlHeight
 
                     // Recently opened apps — horizontal icon strip
                     Item {
@@ -2113,7 +2123,7 @@ PlasmaCore.Dialog {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: rootItem.contextLabel
                                 color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.55)
-                                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.78
+                                font.pointSize: Design.smallFontSize
                             }
                         }
 
@@ -2164,7 +2174,7 @@ PlasmaCore.Dialog {
                                         text: model.display || ""
                                         color: Kirigami.Theme.textColor
                                         opacity: 0.75
-                                        font.pointSize: Math.max(6, Kirigami.Theme.defaultFont.pointSize * 0.77)
+                                        font.pointSize: Math.max(6, Design.smallFontSize)
                                         horizontalAlignment: Text.AlignHCenter
                                         elide: Text.ElideRight
                                         maximumLineCount: 1
@@ -2192,186 +2202,64 @@ PlasmaCore.Dialog {
                     ListView {
                         id: categoryFilters
                         y: categoryControls.recentAppsStripHeight
-                        width: parent.width
-                        height: Kirigami.Units.gridUnit * 2
+                        width: parent.width - categoryDropButton.width - Design.space3
+                        height: Design.controlHeight
                         orientation: ListView.Horizontal
                         spacing: Kirigami.Units.smallSpacing
                         clip: true
                         boundsBehavior: Flickable.StopAtBounds
                         model: rootItem.availableCategories
-                        delegate: Rectangle {
+                        delegate: LauncherButton {
                             id: chip
                             required property var modelData
                             required property int index
-                            readonly property bool selected: rootItem.activeCategoryRow === modelData.row
-                            readonly property bool hasNew: !!rootItem.categoriesWithNewApps[modelData.row]
-                            width: Math.min(categoryFilters.width - 2, chipLabel.implicitWidth + Kirigami.Units.gridUnit * 2)
-                            height: categoryFilters.height - Kirigami.Units.smallSpacing
-                            radius: Math.min(height / 2, Kirigami.Units.gridUnit)
-                            color: selected ? Kirigami.Theme.highlightColor
-                                            : (chipHover.hovered ? root.colorWithAlpha(Kirigami.Theme.textColor, 0.12)
-                                                                 : root.colorWithAlpha(Kirigami.Theme.textColor, 0.06))
-                            border.width: activeFocus ? 2 : 1
-                            border.color: activeFocus ? Kirigami.Theme.highlightColor
-                                                       : root.colorWithAlpha(Kirigami.Theme.textColor, 0.12)
-                            activeFocusOnTab: true
-                            Accessible.role: Accessible.Button
-                            Accessible.name: modelData.label
-                            Accessible.checked: selected
-                            Accessible.description: hasNew ? i18n("New applications") : ""
+                            width: Math.min(220, implicitWidth)
+                            height: Design.controlHeight
+                            text: modelData.label
+                            iconName: modelData.icon || "applications-other"
+                            selected: rootItem.activeCategoryRow === modelData.row
+                            showNewDot: !!rootItem.categoriesWithNewApps[modelData.row]
+                            newDotObjectName: "categoryNewDot_" + modelData.row
+                            Accessible.description: showNewDot ? i18n("New applications") : ""
                             function activate() {
-                                chip.forceActiveFocus();
-                                categoryFilters.currentIndex = index;
                                 rootItem.selectCategory(modelData.row);
+                                categoryFilters.currentIndex = index;
                                 categoryFilters.positionViewAtIndex(index, ListView.Contain);
                             }
-                            Keys.onReturnPressed: event => { activate(); event.accepted = true; }
-                            Keys.onEnterPressed: event => { activate(); event.accepted = true; }
-                            Keys.onSpacePressed: event => { activate(); event.accepted = true; }
-                            Keys.onLeftPressed: event => {
+                            onClicked: activate()
+                            Keys.onLeftPressed: {
                                 categoryFilters.currentIndex = Math.max(0, index - 1);
                                 categoryFilters.positionViewAtIndex(categoryFilters.currentIndex, ListView.Contain);
                                 if (categoryFilters.currentItem) categoryFilters.currentItem.forceActiveFocus();
-                                event.accepted = true;
                             }
-                            Keys.onRightPressed: event => {
+                            Keys.onRightPressed: {
                                 categoryFilters.currentIndex = Math.min(categoryFilters.count - 1, index + 1);
                                 categoryFilters.positionViewAtIndex(categoryFilters.currentIndex, ListView.Contain);
                                 if (categoryFilters.currentItem) categoryFilters.currentItem.forceActiveFocus();
-                                event.accepted = true;
                             }
-                            Keys.onDownPressed: event => {
-                                allAppsGrid.tryActivate(0, 0);
-                                event.accepted = true;
-                            }
-                            HoverHandler { id: chipHover }
-                            Text {
-                                id: chipLabel
-                                anchors.centerIn: parent
-                                text: chip.modelData.label
-                                color: chip.selected ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
-                                font.weight: chip.selected ? Font.DemiBold : Font.Normal
-                                elide: Text.ElideRight
-                                width: Math.min(implicitWidth, chip.width - Kirigami.Units.gridUnit)
-                            }
-                            Rectangle {
-                                objectName: "categoryNewDot_" + chip.modelData.row
-                                visible: chip.hasNew
-                                anchors.top: parent.top
-                                anchors.right: parent.right
-                                anchors.margins: 4
-                                width: 6
-                                height: width
-                                radius: width / 2
-                                color: chip.selected ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.highlightColor
-                            }
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: chip.activate()
-                            }
+                            Keys.onDownPressed: allAppsGrid.tryActivate(0, 0)
                         }
+
                     }
-                }
-                // ── Plugin UI Sections ──────────────────────────────────────
-                Column {
-                    id: pluginSectionsColumn
-                    width: parent.width
-                    spacing: Kirigami.Units.largeSpacing
-                    visible: pluginSectionsRepeater.count > 0
-
-                    Repeater {
-                        id: pluginSectionsRepeater
-                        model: PluginSystem.uiSections()
-
-                        delegate: Item {
-                            width: pluginSectionsColumn.width
-                            height: sectionLoader.implicitHeight + Kirigami.Units.largeSpacing
-
-                            // Section header
-                            Row {
-                                id: sectionHeader
-                                spacing: Kirigami.Units.smallSpacing
-
-                                Kirigami.Icon {
-                                    source: "plugins"
-                                    implicitWidth: Kirigami.Units.iconSizes.smallMedium
-                                    implicitHeight: Kirigami.Units.iconSizes.smallMedium
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                                PlasmaExtras.Heading {
-                                    level: 5
-                                    text: modelData.name
-                                    color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.8)
-                                    font.weight: Font.Bold
-                                }
-                            }
-
-                            Loader {
-                                id: sectionLoader
-                                anchors.top: sectionHeader.bottom
-                                anchors.topMargin: Kirigami.Units.smallSpacing
-                                width: parent.width
-                                sourceComponent: modelData.component
-                            }
-                        }
-                    }
-                }
-
-                // ── Tout (ex-page « Toutes les applications ») ──────────────
-                RowLayout {
-                    id: allAppsHeader
-                    objectName: "allAppsHeader"
-                    x: rootItem.sectionInset
-                    // en mode Catégories : on suit la largeur réellement occupée par les tuiles
-                    // (Math.floor dans CategoryTiles.qml laisse quelques pixels de côté à droite)
-                    width: Plasmoid.configuration.allAppsViewMode === 2
-                           ? (allAppsCategoryGrid.tileWidth * allAppsCategoryGrid.columnsCount
-                              + allAppsCategoryGrid.gap * (allAppsCategoryGrid.columnsCount - 1)
-                              + Kirigami.Units.largeSpacing + 5) // compense le padding du bouton + ajustement fin
-                           : (parent.width - rootItem.sectionInset * 2)
-                    implicitHeight: Kirigami.Units.gridUnit * 2
-
-                    PlasmaExtras.Heading {
-                        color: colorWithAlpha(Kirigami.Theme.textColor, 0.8)
-                        level: 5
-                        text: rootItem.activeCategoryRow < 0 ? i18n("All") : rootItem.activeCategoryName
-                        font.weight: Font.Bold
-                    }
-
-                    Item { Layout.fillWidth: true }
-
-                    PC3.ToolButton {
-                        objectName: "appsListButton"
-                        text: i18n("List")
-                        icon.name: "view-list-details"
-                        checkable: true
-                        checked: Plasmoid.configuration.allAppsViewMode === 0
-                        onClicked: rootItem.setAppsViewMode(0)
-                    }
-                    PC3.ToolButton {
-                        objectName: "appsGridButton"
-                        text: i18n("Grid")
-                        icon.name: "view-grid"
-                        checkable: true
-                        checked: Plasmoid.configuration.allAppsViewMode === 1
-                        onClicked: rootItem.setAppsViewMode(1)
-                    }
-                    SectionButton {
-                        id: viewModeButton
+                    LauncherButton {
+                        id: categoryDropButton
+                        objectName: "categoryDropdownButton"
+                        anchors.right: parent.right
+                        y: categoryControls.recentAppsStripHeight
+                        text: rootItem.activeCategoryRow < 0 ? i18n("All categories") : rootItem.activeCategoryName
+                        iconName: "view-filter"
+                        showLabel: rootItem.width >= 560
+                        width: showLabel ? Math.min(170, implicitWidth) : Design.controlHeight
+                        selected: viewModePopup.visible
                         showNewDot: !!rootItem.categoriesWithNewApps[-1]
-                        iconName: "go-down"
-                        text: i18n("Categories")
-                        onClicked: {
-                            if (viewModePopup.visible) viewModePopup.visible = false;
-                            else viewModePopup.openFor(viewModeButton);
-                        }
+                        onClicked: viewModePopup.visible ? viewModePopup.close() : viewModePopup.openFor(categoryDropButton)
                     }
+
                 }
 
                 Item {
                     id: allAppsGridContainer
-                    readonly property int listInset: Math.max(0, rootItem.sectionInset - rootItem.listIconPad)
+                    readonly property int listInset: 0
                     readonly property bool gridMode: Plasmoid.configuration.allAppsViewMode === 1
                     x: gridMode ? 0 : listInset
                     width: parent.width - (gridMode ? 0 : listInset) * 2
@@ -2388,34 +2276,21 @@ PlasmaCore.Dialog {
                         color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.65)
                     }
 
-                    ItemGridView {
+                    AppsView {
                         id: allAppsGrid
                         objectName: "allAppsGrid"
-                        virtualized: true
+                        width: parent.width
+                        viewMode: Plasmoid.configuration.allAppsViewMode === 1 ? 1 : 0
+                        columns: root.colonnesAuto
+                        contextKey: rootItem.activeCategoryRow
+                        iconSize: root.iconSize
+                        labels2lines: Plasmoid.configuration.labels2lines
+                        listModel: rootItem.activeCategoryRow < 0 ? allAppsListModel : categoryAppsModel
+                        gridModel: rootItem.activeCategoryRow < 0 ? allAppsGridModel : categoryAppsModel
                         viewportHeight: Math.min(height, mainFlick.height)
                         viewportOffset: Math.max(0, Math.min(height - viewportHeight,
                                                             mainFlick.contentY - allAppsGridContainer.y))
-                        scrollEnabled: false
                         onWheelUnhandled: delta => mainFlick.scrollBy(delta)
-                        whiteHighlight: true // surlignement blanc 50 %
-                        width: parent.width
-                        readonly property int columnsCount: cellWidth > 0 ? Math.max(1, Math.floor(width / cellWidth)) : 1
-                        // la grille ne défile plus : elle prend toute sa hauteur, c'est la page qui défile
-                        height: Math.max(1, Math.ceil((rootItem.activeCategoryRow < 0 ? rootItem.allAppsComboModel.count : categoryAppsModel.count) / columnsCount)) * cellHeight
-                        itemColumns: Plasmoid.configuration.allAppsViewMode === 1 ? 1 : 2
-                        labels2lines: Plasmoid.configuration.allAppsViewMode === 1 && Plasmoid.configuration.labels2lines
-                        dragEnabled: true
-                        dropEnabled: false
-                        verticalScrollBarPolicy: PC3.ScrollBar.AlwaysOff
-                        cellWidth: Plasmoid.configuration.allAppsViewMode === 1
-                                   ? Math.floor(width / Math.max(1, root.colonnesAuto))
-                                   : width
-                        cellHeight: Plasmoid.configuration.allAppsViewMode === 1
-                                    ? root.cellSizeHeight
-                                    : root.iconSize + Kirigami.Units.gridUnit + Kirigami.Units.largeSpacing
-                        iconSize: root.iconSize
-                        clip: true
-                        model: rootItem.activeCategoryRow < 0 ? rootItem.allAppsComboModel : categoryAppsModel
                         onKeyNavUp: {
                             allAppsGrid.focus = false;
                             categoryFilters.currentIndex = 0;
@@ -2469,8 +2344,6 @@ PlasmaCore.Dialog {
             // PAGE 3 — Search Results
             Item {
                 id: searchPage
-                width: view.width
-                height: view.height
 
                 function tryActivate(row, col) { runnerGrid.tryActivate(row, col); }
 
@@ -2484,10 +2357,6 @@ PlasmaCore.Dialog {
                     height: (root.searching && !searchField.text.startsWith('>') && !searchField.text.startsWith('/'))
                             ? pillsRow.implicitHeight + Kirigami.Units.smallSpacing * 2
                             : 0
-
-                    Behavior on height {
-                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-                    }
 
                     Row {
                         id: pillsRow
@@ -2503,68 +2372,17 @@ PlasmaCore.Dialog {
                                 { key: "settings", label: i18n("Settings") }
                             ]
 
-                            delegate: Item {
-                                id: pillDelegate
-                                property bool isActive: kicker.searchRunnerFilter === modelData.key
-                                height: Kirigami.Units.gridUnit * 2
-                                width: pillText.implicitWidth + Kirigami.Units.gridUnit * 2
-
-                                focus: true
-                                activeFocusOnTab: true
-                                Accessible.role: Accessible.Button
-                                Accessible.name: modelData.label
-                                Accessible.checked: isActive
-
-                                function activate() {
+                            delegate: LauncherButton {
+                                required property var modelData
+                                text: modelData.label
+                                selected: kicker.searchRunnerFilter === modelData.key
+                                iconName: modelData.key === "apps" ? "applications-all"
+                                          : modelData.key === "settings" ? "preferences-system" : "edit-find"
+                                onClicked: {
                                     kicker.searchRunnerFilter = modelData.key;
-                                    var q = searchField.text;
+                                    var query = searchField.text;
                                     runnerModel.query = "";
-                                    runnerModel.query = q;
-                                }
-
-                                Keys.onReturnPressed: activate()
-                                Keys.onSpacePressed:  activate()
-
-                                // Fill background
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: height / 2
-                                    color: isActive
-                                           ? Kirigami.Theme.highlightColor
-                                           : colorWithAlpha(Kirigami.Theme.textColor, 0.08)
-                                    border.width: isActive ? 0 : 1
-                                    border.color: colorWithAlpha(Kirigami.Theme.textColor, 0.12)
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-                                }
-
-                                // Keyboard focus ring
-                                Rectangle {
-                                    anchors.fill: parent
-                                    anchors.margins: -2
-                                    radius: height / 2 + 2
-                                    color: "transparent"
-                                    border.width: pillDelegate.activeFocus ? 2 : 0
-                                    border.color: Kirigami.Theme.highlightColor
-                                    opacity: 0.8
-                                    Behavior on border.width { NumberAnimation { duration: 80 } }
-                                }
-
-                                Text {
-                                    id: pillText
-                                    anchors.centerIn: parent
-                                    text: modelData.label
-                                    color: isActive
-                                           ? "white"
-                                           : colorWithAlpha(Kirigami.Theme.textColor, 0.75)
-                                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.85
-                                    font.bold: isActive
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: pillDelegate.activate()
+                                    runnerModel.query = query;
                                 }
                             }
                         }
@@ -2678,12 +2496,12 @@ PlasmaCore.Dialog {
                                     text: "= " + commandPaletteContainer.calcResult
                                     color: Kirigami.Theme.textColor
                                     font.bold: true
-                                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
+                                    font.pointSize: Design.headingSize
                                 }
                                 Text {
                                     text: i18n("Enter or click to copy result")
                                     color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.55)
-                                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.78
+                                    font.pointSize: Design.smallFontSize
                                 }
                             }
                         }
@@ -2707,7 +2525,7 @@ PlasmaCore.Dialog {
                         anchors.topMargin: Kirigami.Units.smallSpacing
                         text: i18n("Type a command  ·  ↓ navigate  ·  /calc expr  ·  Enter run")
                         color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.42)
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.82
+                        font.pointSize: Design.smallFontSize
                     }
 
                     ListView {
@@ -2782,13 +2600,13 @@ PlasmaCore.Dialog {
                                     Text {
                                         text: "/" + modelData.name
                                         color: Kirigami.Theme.textColor
-                                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.95
+                                        font.pointSize: Design.smallFontSize
                                         font.bold: true
                                     }
                                     Text {
                                         text: modelData.desc
                                         color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.6)
-                                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.82
+                                        font.pointSize: Design.smallFontSize
                                     }
                                 }
                             }
@@ -2818,7 +2636,7 @@ PlasmaCore.Dialog {
                              && !searchField.text.startsWith('>')
                     text: i18n("Alt+1–9 to launch")
                     color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.3)
-                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.72
+                    font.pointSize: Design.smallFontSize
                 }
 
                 // ── Results grid ──
@@ -2832,7 +2650,7 @@ PlasmaCore.Dialog {
                     visible: !(root.searching && searchField.text.startsWith('/'))
                     itemColumns: 3
                     cellWidth: Math.max(1, availableWidth)
-                    cellHeight: root.iconSize + Kirigami.Units.gridUnit + Kirigami.Units.largeSpacing
+                    cellHeight: Design.rowHeight(root.iconSize)
                     model: runnerModel
                     grabFocus: false
                     focus: false
@@ -2896,7 +2714,7 @@ PlasmaCore.Dialog {
                                     Text {
                                         text: modelData.title || ""
                                         color: Kirigami.Theme.textColor
-                                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.95
+                                        font.pointSize: Design.smallFontSize
                                         elide: Text.ElideRight
                                         width: pluginResultsColumn.width
                                                - Kirigami.Units.iconSizes.smallMedium
@@ -2907,7 +2725,7 @@ PlasmaCore.Dialog {
                                         visible: modelData.subtitle !== undefined && modelData.subtitle !== ""
                                         text: modelData.subtitle || ""
                                         color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.55)
-                                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.78
+                                        font.pointSize: Design.smallFontSize
                                         elide: Text.ElideRight
                                         width: pluginResultsColumn.width
                                                - Kirigami.Units.iconSizes.smallMedium
@@ -2972,7 +2790,7 @@ PlasmaCore.Dialog {
                         }
                         color: Kirigami.Theme.textColor
                         opacity: 0.55
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.95
+                        font.pointSize: Design.smallFontSize
                     }
                 }
             }
@@ -3000,111 +2818,13 @@ PlasmaCore.Dialog {
             }
         }
 
-        // ── Fenêtre « Affichage » de la rubrique Tout (même style que la fenêtre du bouton Alimentation) ──
-        // fenêtre système séparée : le menu principal ne doit pas se refermer quand elle prend le focus
-        PlasmaCore.Dialog {
+        CategoryDropdown {
             id: viewModePopup
-            flags: Qt.WindowStaysOnTopHint
-            location: PlasmaCore.Types.Floating
-            hideOnWindowDeactivate: true
-
-            property Item anchorItem: null
-            property bool keepMenuOpen: false
-
-            onVisibleChanged: {
-                if (visible) {
-                    Qt.callLater(viewModePopup.reposition);
-                } else {
-                    kdeConnectPanel.hold = false;
-                    root.hideOnWindowDeactivate = !kdeConnectPanel.visible;
-                    if (keepMenuOpen) {
-                        // choix fait dans cette fenêtre : le menu principal reste ouvert
-                        keepMenuOpen = false;
-                        root.requestActivate();
-                    } else if (!root.active && !kdeConnectPanel.active) {
-                        root.visible = false;
-                    }
-                }
-            }
-
-            function openFor(button) {
-                anchorItem = button;
-                kdeConnectPanel.hold = true;
-                root.hideOnWindowDeactivate = false;
-                visible = true;
-            }
-
-            function choose(mode) {
-                // Fenestra : affichage rapide : le petit menu se ferme d'abord, le changement suit
-                keepMenuOpen = true;
-                visible = false;
-                Qt.callLater(function () {
-                    rootItem.setAppsViewMode(mode);
-                    if (mode === 2) root.ensureCategoryModel();
-                });
-            }
-
-            function reposition() {
-                if (!anchorItem) return;
-                // sous le bouton, alignée sur son bord droit ; au-dessus s'il n'y a pas la place dans la hauteur du menu
-                var pos = anchorItem.mapToGlobal(anchorItem.width, anchorItem.height);
-                x = Math.round(pos.x - width);
-                var below = Math.round(pos.y + Kirigami.Units.smallSpacing);
-                y = (below + height <= root.y + root.height)
-                    ? below
-                    : Math.round(anchorItem.mapToGlobal(0, 0).y - height - Kirigami.Units.smallSpacing);
-            }
-
-            mainItem: ColumnLayout {
-                spacing: 0
-
-                Repeater {
-                    model: [
-                        { mode: 2, label: i18n("Categories") },
-                        { mode: 1, label: i18n("Grid") },
-                        { mode: 0, label: i18n("List") }
-                    ]
-
-                    delegate: PC3.ItemDelegate {
-                        id: modeItem
-                        Layout.fillWidth: true
-                        hoverEnabled: true
-                        leftPadding: Kirigami.Units.smallSpacing + 6
-                        rightPadding: Kirigami.Units.smallSpacing + 6
-                        topPadding: Kirigami.Units.smallSpacing
-                        bottomPadding: Kirigami.Units.smallSpacing
-                        readonly property bool current: Plasmoid.configuration.allAppsViewMode === modelData.mode
-
-                        contentItem: RowLayout {
-                            spacing: Kirigami.Units.smallSpacing + 6
-
-                            Text {
-                                text: "\u2713"
-                                color: Kirigami.Theme.textColor
-                                opacity: modeItem.current ? 1.0 : 0.0
-                                font.pointSize: Kirigami.Theme.defaultFont.pointSize
-                                Layout.preferredWidth: Kirigami.Units.gridUnit
-                            }
-
-                            PC3.Label {
-                                text: modelData.label
-                                Layout.fillWidth: true
-                            }
-                        }
-
-                        background: Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: 2
-                            radius: Kirigami.Units.smallSpacing
-                            color: Kirigami.Theme.highlightColor
-                            opacity: parent.hovered ? 0.18 : 0.0
-                            Behavior on opacity { NumberAnimation { duration: 100 } }
-                        }
-
-                        onClicked: viewModePopup.choose(modelData.mode)
-                    }
-                }
-            }
+            parent: rootItem
+            categories: rootItem.availableCategories
+            newCategories: rootItem.categoriesWithNewApps
+            selectedRow: rootItem.activeCategoryRow
+            onCategoryChosen: row => rootItem.selectCategory(row)
         }
 
         // ── Fenêtre d'une catégorie (clic sur le paquet de mini-icônes ou sur le fond d'une tuile) ──
@@ -3232,7 +2952,7 @@ PlasmaCore.Dialog {
                 }
                 width: flyGrid.width + Kirigami.Units.gridUnit * 2
                 height: flyTitle.implicitHeight + flyGrid.height + Kirigami.Units.gridUnit * 3
-                radius: Kirigami.Units.smallSpacing * 2 + 2
+                radius: Design.popupRadius
                 color: Kirigami.Theme.backgroundColor
                 border.width: 1
                 border.color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.15)
@@ -3261,8 +2981,8 @@ PlasmaCore.Dialog {
                     anchors.top: flyTitle.bottom
                     anchors.topMargin: Kirigami.Units.gridUnit
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: root.cellSizeWidth * 4 + Kirigami.Units.gridUnit
-                    height: Math.max(1, Math.min(3, Math.ceil(count / 4))) * categoryFlyout.cellH
+                    width: Math.min(rootItem.width - Design.space4 * 4, root.cellSizeWidth * 4)
+                    height: Math.min(rootItem.height - Design.space5 * 6, Math.max(1, Math.min(3, Math.ceil(count / Math.min(4, root.colonnesAuto)))) * categoryFlyout.cellH)
                     itemColumns: 1
                     labels2lines: true
                     showNewTag: true
@@ -3270,7 +2990,7 @@ PlasmaCore.Dialog {
                     dragEnabled: false // liste fusionnée : la réorganisation n'a pas de sens ici
                     dropEnabled: false
                     verticalScrollBarPolicy: PC3.ScrollBar.AsNeeded
-                    cellWidth: root.cellSizeWidth
+                    cellWidth: Math.floor(width / Math.min(4, root.colonnesAuto))
                     cellHeight: categoryFlyout.cellH
                     iconSize: root.iconSize
                     clip: true
@@ -3475,7 +3195,7 @@ PlasmaCore.Dialog {
                               : ""
                         font.bold: true
                         color: Kirigami.Theme.textColor
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.9
+                        font.pointSize: Design.smallFontSize
                     }
 
                     Repeater {
@@ -3513,7 +3233,7 @@ PlasmaCore.Dialog {
                                 Text {
                                     text: rootItem.displayNameForId(modelData)
                                     color: Kirigami.Theme.textColor
-                                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.9
+                                    font.pointSize: Design.smallFontSize
                                     verticalAlignment: Text.AlignVCenter
                                 }
                             }
@@ -3572,7 +3292,7 @@ PlasmaCore.Dialog {
                         text: i18n("New folder")
                         color: Kirigami.Theme.textColor
                         font.bold: true
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
+                        font.pointSize: Design.headingSize
                     }
 
                     PC3.TextField {
@@ -3584,7 +3304,7 @@ PlasmaCore.Dialog {
                     Text {
                         text: i18n("Choose from pinned apps:")
                         color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.7)
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.85
+                        font.pointSize: Design.smallFontSize
                         topPadding: Kirigami.Units.smallSpacing
                     }
 
@@ -3651,7 +3371,7 @@ PlasmaCore.Dialog {
                                     Text {
                                         text: model.display !== undefined ? model.display : ""
                                         color: Kirigami.Theme.textColor
-                                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.9
+                                        font.pointSize: Design.smallFontSize
                                         elide: Text.ElideRight
                                         width: appPickerListView.width - Kirigami.Units.iconSizes.small
                                                - Kirigami.Units.gridUnit * 2 - Kirigami.Units.smallSpacing * 3
@@ -3884,7 +3604,7 @@ PlasmaCore.Dialog {
                               ? rootItem.allAppsFoldersData[allAppsFolderPopup.folderIndex].name : ""
                         font.bold: true
                         color: Kirigami.Theme.textColor
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.9
+                        font.pointSize: Design.smallFontSize
                     }
 
                     Repeater {
@@ -3921,7 +3641,7 @@ PlasmaCore.Dialog {
                                 Text {
                                     text: rootItem.displayNameForId(modelData)
                                     color: Kirigami.Theme.textColor
-                                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.9
+                                    font.pointSize: Design.smallFontSize
                                     elide: Text.ElideRight
                                     width: allAppsFolderPopup.width - Kirigami.Units.iconSizes.small
                                            - Kirigami.Units.gridUnit * 3.5
@@ -3938,7 +3658,7 @@ PlasmaCore.Dialog {
                                 color: removeHover.containsMouse
                                        ? Kirigami.Theme.negativeTextColor
                                        : root.colorWithAlpha(Kirigami.Theme.textColor, 0.35)
-                                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
+                                font.pointSize: Design.headingSize
                                 visible: aafAppHover.containsMouse || removeHover.containsMouse
 
                                 MouseArea {
@@ -3985,7 +3705,7 @@ PlasmaCore.Dialog {
                         bottomPadding: Kirigami.Units.smallSpacing
                         text: i18n("Drag apps here to add them")
                         color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.45)
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.85
+                        font.pointSize: Design.smallFontSize
                         font.italic: true
                     }
                 }
@@ -4058,7 +3778,7 @@ PlasmaCore.Dialog {
                         text: i18n("New folder")
                         color: Kirigami.Theme.textColor
                         font.bold: true
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
+                        font.pointSize: Design.headingSize
                     }
 
                     PC3.TextField {
@@ -4074,7 +3794,7 @@ PlasmaCore.Dialog {
                     Text {
                         text: i18n("Drag apps from the list into this folder to add them.")
                         color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.6)
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.82
+                        font.pointSize: Design.smallFontSize
                         wrapMode: Text.Wrap
                         width: parent.width
                     }
@@ -4144,7 +3864,7 @@ PlasmaCore.Dialog {
                         text: i18n("Rename Folder")
                         color: Kirigami.Theme.textColor
                         font.bold: true
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
+                        font.pointSize: Design.headingSize
                     }
 
                     PC3.TextField {
@@ -4290,7 +4010,7 @@ PlasmaCore.Dialog {
                               : i18n("Add apps to folder")
                         color: Kirigami.Theme.textColor
                         font.bold: true
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.9
+                        font.pointSize: Design.smallFontSize
                         elide: Text.ElideRight
                     }
 
@@ -4366,7 +4086,7 @@ PlasmaCore.Dialog {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: model.appName
                                     color: Kirigami.Theme.textColor
-                                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.9
+                                    font.pointSize: Design.smallFontSize
                                     elide: Text.ElideRight
                                 }
 
@@ -4445,10 +4165,7 @@ PlasmaCore.Dialog {
                         if (!sg) continue;
                         if (resultCount + sg.count > altDigit) {
                             var localIdx = altDigit - resultCount;
-                            if ("trigger" in sg.model) {
-                                sg.model.trigger(localIdx, "", null);
-                                root.toggle();
-                            }
+                            sg.activate(localIdx);
                             return;
                         }
                         resultCount += sg.count;
@@ -4509,7 +4226,8 @@ PlasmaCore.Dialog {
     property bool categoryModelLoaded: false
 
     function setCategoryModel() {
-        allAppsCategoryGrid.model = categoryRootModel;
+        if (Plasmoid.configuration.allAppsViewMode === 2 || allAppsCategoryGrid.model !== null)
+            allAppsCategoryGrid.model = categoryRootModel;
     }
 
     function ensureCategoryModel() {
@@ -4524,6 +4242,8 @@ PlasmaCore.Dialog {
     function scrollToLetter(letter) {
         if ((rootItem.activeCategoryRow < 0 ? rootItem.allAppsComboModel.count : categoryAppsModel.count) === 0) return;
 
+        scrollAnim.stop();
+        mainFlick.cancelFlick();
         alphabetOverlay.currentLetter = letter;
         alphabetOverlay.opacity = 1;
         overlayTimer.restart();

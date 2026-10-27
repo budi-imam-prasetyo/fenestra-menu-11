@@ -1056,6 +1056,9 @@ PlasmaCore.Dialog {
             PC3.ComboBox {
                 Layout.fillWidth: true
                 visible: panel.devices.length > 1
+                implicitWidth: 0
+                implicitHeight: Design.controlHeight
+                implicitContentWidthPolicy: PC3.ComboBox.WidestText
                 model: panel.devices.map(d => d.name)
                 currentIndex: panel.current
                 onActivated: idx => panel.current = idx

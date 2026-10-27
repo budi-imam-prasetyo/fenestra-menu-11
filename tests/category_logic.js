@@ -26,7 +26,7 @@ function model(rows, children = {}) {
 }
 function list() {
   const rows = [];
-  return { rows, get count() { return rows.length; }, clear() { rows.length = 0; }, append: row => rows.push(row) };
+  return { rows, get count() { return rows.length; }, clear() { rows.length = 0; }, append: row => Array.isArray(row) ? rows.push(...row) : rows.push(row) };
 }
 const GAME = { 0: 'Game', 259: 'game.desktop', 1: 'game-icon' };
 const WORK = { 0: 'Work', 259: 'work.desktop', 1: 'work-icon' };
@@ -48,7 +48,7 @@ const env = {
   sortedAppsModel: Object.assign(model([GAME, WORK]), { sourceModel: true }),
   categoryAppsModel, allAppsComboModel,
   activeCategoryRow: -1, activeCategoryName: '',
-  availableCategories: [], categoryMembership: {},
+  availableCategories: [], categoryMembership: {}, categoryRowsCache: {},
   allAppsGrid: { currentIndex: 5 },
   mainFlick: { contentY: 80 }, allAppsHeader: { y: 40 },
 };

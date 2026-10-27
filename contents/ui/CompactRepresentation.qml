@@ -150,7 +150,7 @@ Item {
     Rectangle {
         id: activeShadow
         anchors.fill: parent
-        radius: 12
+        radius: Design.radius
         color: "black"
         opacity: (dashWindow && dashWindow.visible) ? 0.12 : 0.0
     }
@@ -162,10 +162,10 @@ Item {
         anchors.rightMargin: -5
         anchors.topMargin: -4      // 1 px de moins en haut
         anchors.bottomMargin: -4   // 1 px de moins en bas
-        radius: 5
-        color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff")
+        radius: Design.radius
+        color: Design.hover
         border.width: 1
-        border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
+        border.color: Design.border
         opacity: ((dashWindow && dashWindow.visible) || mouseArea.containsMouse) ? 1.0 : 0.0
 
         Behavior on opacity {

@@ -11,9 +11,9 @@ Part of the **Fenestra** series, designed in particular for people coming from W
 ### Start menu
 
 - **Pinned** apps with folders, an optional strip of recently launched apps, and compact application-category filters derived from KDE's application catalog.
-- **All apps** in three views: **List**, **Grid** or **Categories** (one tile per category), switchable from the menu.
+- **All apps** in three views: **List**, **Grid** or **Categories**, with one view selector, an accessible category dropdown and retained List/Grid viewports.
 - Select **All apps** or a category to filter the browsing list. Applications in several categories appear once in each relevant filter. Search temporarily shows global runner results; clearing the query restores the selected category. In Categories view, selecting a filter shows that category's app list.
-- Menu width adapts to the screen: 6, 7 or 8 columns (below 1900 px, 1900–2499 px, 2500 px and above).
+- Content-driven columns adapt to launcher width, icon size and KDE scaling, with compact controls on narrow screens.
 - **Search** for apps and settings, with filters, web search, a built-in calculator (`/calc`) and `Alt+1–9` to launch a result.
 - Optional shell command runner (`> command`) and optional quick actions bar (screenshot, lock, terminal…).
 - Footer with your **account** (avatar, name, manage account, other users) and a **power** menu (lock, sleep, hibernate, shut down, restart, sign out). Hibernate appears only when the running system reports that hibernation is available.
@@ -149,8 +149,19 @@ Files inherited from Menu 11 Next and KDE keep their original GPL-2.0-or-later n
 
 Run `sh scripts/test-menu.sh` on a Plasma 6 workstation with Qt and Plasma
 development packages. It loads the real applet with isolated settings and checks
-List/Grid button clicks, wheel scrolling over icons, alphabet navigation,
-search typing and clearing. Screenshots are saved under `build/menu-tests/`.
+All three view buttons, dropdown selection and Escape, wheel scrolling, alphabet
+navigation, pinned model operations, single activation, folders, search and focus. Screenshots are saved under `build/menu-tests/`.
 
 List and Grid cache their catalog data and render only visible rows. The UI test
 accepts `--benchmark` on its built `check` executable to time view switches.
+
+Version 1.5 uses shared theme-derived colors, spacing, typography and controls.
+Application icons retain their identities; interface actions use the KDE icon
+theme. The existing KDE Connect layout and operations are preserved.
+
+For the isolated light/dark, compact/expanded and 125% scale matrix, build the UI
+harness above, then run `python3 tests/plasma/run_matrix.py`. Screenshots are in
+`build/design-validation/`. Performance comparisons accept an immutable source
+snapshot: `python3 tests/plasma/compare_performance.py /path/to/baseline`.
+See [the 1.5 audit and validation report](docs/redesign-1.5.md) and
+[the changelog](CHANGELOG.md) for evidence and known limits.

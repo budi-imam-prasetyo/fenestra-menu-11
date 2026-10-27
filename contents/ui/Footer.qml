@@ -153,10 +153,10 @@ RowLayout{
 
         Rectangle {
             anchors.fill: parent
-            radius: 5
-            color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff")
+            radius: Design.radius
+            color: Design.hover
             border.width: 1
-            border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
+            border.color: Design.border
             opacity: (accountMouse.containsMouse || accountMouse.pressed || accountMenu.visible) ? 1.0 : 0.0
             Behavior on opacity { NumberAnimation { duration: 100 } }
         }
@@ -606,8 +606,8 @@ RowLayout{
 
     PlasmaComponents3.ToolButton {
         id: powerButton
-        icon.width: 22
-        icon.height: 22
+        icon.width: Design.actionIcon
+        icon.height: Design.actionIcon
         icon.source: Qt.resolvedUrl("../icons/status/system-shutdown-v2.svg")   // Fenestra : icône d'alimentation du widget
         Layout.rightMargin: 27 // 20 + 5 + 2 points supplémentaires
         // cadre-alimentation-v1 : carré de la hauteur du bloc utilisateur,
@@ -616,10 +616,10 @@ RowLayout{
         Layout.preferredHeight: accountButton.implicitHeight - 3
         Layout.alignment: Qt.AlignVCenter
         background: Rectangle {
-            radius: 5
-            color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff")
+            radius: Design.radius
+            color: Design.hover
             border.width: 1
-            border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
+            border.color: Design.border
             opacity: (powerButton.hovered || powerButton.down || powerMenu.visible) ? 1.0 : 0.0
             Behavior on opacity { NumberAnimation { duration: 100 } }
         }
@@ -687,8 +687,8 @@ RowLayout{
                     rightPadding: Kirigami.Units.smallSpacing + 6
                     topPadding: Kirigami.Units.smallSpacing
                     bottomPadding: Kirigami.Units.smallSpacing
-                    icon.width: 22
-                    icon.height: 22
+                    icon.width: Design.actionIcon
+                    icon.height: Design.actionIcon
                     icon.source: Qt.resolvedUrl("../icons/status/system-lock-screen-v2.svg")   // Fenestra : icône d'alimentation du widget
                     contentItem: RowLayout {   // icône à la couleur du texte du thème
                         spacing: parent ? parent.spacing : Kirigami.Units.smallSpacing + 6
@@ -710,9 +710,9 @@ RowLayout{
                         anchors.fill: parent
                         anchors.margins: 2
                         radius: Kirigami.Units.smallSpacing
-                        color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff") // surlignement-alim-v1
+                        color: Design.hover // surlignement-alim-v1
                         border.width: 1                 // même bordure que les autres surlignements
-                        border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
+                        border.color: Design.border
                         opacity: parent.hovered ? 1.0 : 0.0
                         Behavior on opacity { NumberAnimation { duration: 100 } }
                     }
@@ -730,8 +730,8 @@ RowLayout{
                     rightPadding: Kirigami.Units.smallSpacing + 6
                     topPadding: Kirigami.Units.smallSpacing
                     bottomPadding: Kirigami.Units.smallSpacing
-                    icon.width: 22
-                    icon.height: 22
+                    icon.width: Design.actionIcon
+                    icon.height: Design.actionIcon
                     icon.source: Qt.resolvedUrl("../icons/status/system-suspend-v2.svg")   // Fenestra : icône d'alimentation du widget
                     contentItem: RowLayout {   // icône à la couleur du texte du thème
                         spacing: parent ? parent.spacing : Kirigami.Units.smallSpacing + 6
@@ -753,9 +753,9 @@ RowLayout{
                         anchors.fill: parent
                         anchors.margins: 2
                         radius: Kirigami.Units.smallSpacing
-                        color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff") // surlignement-alim-v1
+                        color: Design.hover // surlignement-alim-v1
                         border.width: 1                 // même bordure que les autres surlignements
-                        border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
+                        border.color: Design.border
                         opacity: parent.hovered ? 1.0 : 0.0
                         Behavior on opacity { NumberAnimation { duration: 100 } }
                     }
@@ -773,8 +773,8 @@ RowLayout{
                     rightPadding: Kirigami.Units.smallSpacing + 6
                     topPadding: Kirigami.Units.smallSpacing
                     bottomPadding: Kirigami.Units.smallSpacing
-                    icon.width: 22
-                    icon.height: 22
+                    icon.width: Design.actionIcon
+                    icon.height: Design.actionIcon
                     icon.source: Qt.resolvedUrl("../icons/status/system-hibernate-v2.svg")   // Fenestra : icône d'alimentation du widget
                     contentItem: RowLayout {   // icône à la couleur du texte du thème
                         spacing: parent ? parent.spacing : Kirigami.Units.smallSpacing + 6
@@ -796,9 +796,9 @@ RowLayout{
                         anchors.fill: parent
                         anchors.margins: 2
                         radius: Kirigami.Units.smallSpacing
-                        color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff") // surlignement-alim-v1
+                        color: Design.hover // surlignement-alim-v1
                         border.width: 1                 // même bordure que les autres surlignements
-                        border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
+                        border.color: Design.border
                         opacity: parent.hovered ? 1.0 : 0.0
                         Behavior on opacity { NumberAnimation { duration: 100 } }
                     }
@@ -813,8 +813,8 @@ RowLayout{
                     rightPadding: Kirigami.Units.smallSpacing + 6
                     topPadding: Kirigami.Units.smallSpacing
                     bottomPadding: Kirigami.Units.smallSpacing
-                    icon.width: 22
-                    icon.height: 22
+                    icon.width: Design.actionIcon
+                    icon.height: Design.actionIcon
                     icon.source: Qt.resolvedUrl("../icons/status/system-shutdown-v2.svg")   // Fenestra : icône d'alimentation du widget
                     contentItem: RowLayout {   // icône à la couleur du texte du thème
                         spacing: parent ? parent.spacing : Kirigami.Units.smallSpacing + 6
@@ -836,9 +836,9 @@ RowLayout{
                         anchors.fill: parent
                         anchors.margins: 2
                         radius: Kirigami.Units.smallSpacing
-                        color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff") // surlignement-alim-v1
+                        color: Design.hover // surlignement-alim-v1
                         border.width: 1                 // même bordure que les autres surlignements
-                        border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
+                        border.color: Design.border
                         opacity: parent.hovered ? 1.0 : 0.0
                         Behavior on opacity { NumberAnimation { duration: 100 } }
                     }
@@ -856,8 +856,8 @@ RowLayout{
                     rightPadding: Kirigami.Units.smallSpacing + 6
                     topPadding: Kirigami.Units.smallSpacing
                     bottomPadding: Kirigami.Units.smallSpacing
-                    icon.width: 22
-                    icon.height: 22
+                    icon.width: Design.actionIcon
+                    icon.height: Design.actionIcon
                     icon.source: Qt.resolvedUrl("../icons/status/system-reboot-v2.svg")   // Fenestra : icône d'alimentation du widget
                     contentItem: RowLayout {   // icône à la couleur du texte du thème
                         spacing: parent ? parent.spacing : Kirigami.Units.smallSpacing + 6
@@ -879,9 +879,9 @@ RowLayout{
                         anchors.fill: parent
                         anchors.margins: 2
                         radius: Kirigami.Units.smallSpacing
-                        color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff") // surlignement-alim-v1
+                        color: Design.hover // surlignement-alim-v1
                         border.width: 1                 // même bordure que les autres surlignements
-                        border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
+                        border.color: Design.border
                         opacity: parent.hovered ? 1.0 : 0.0
                         Behavior on opacity { NumberAnimation { duration: 100 } }
                     }

@@ -22,7 +22,7 @@ class CategoryTests(unittest.TestCase):
         self.assertNotIn("docsWeekModel", menu)
         self.assertIn("runnerModel.query = searchField.text", menu)
         self.assertIn("showRecentDocs: false", main)
-        self.assertIn("model: rootItem.activeCategoryRow < 0 ? rootItem.allAppsComboModel : categoryAppsModel", menu)
+        self.assertIn("listModel: rootItem.activeCategoryRow < 0 ? allAppsListModel : categoryAppsModel", menu)
 
 
 if __name__ == "__main__":

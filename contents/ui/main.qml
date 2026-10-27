@@ -43,7 +43,7 @@ PlasmoidItem {
 
     // Optional Rust accelerator. Core.qml falls back to the JavaScript logic
     // when the native module is not installed.
-    Core { id: core }
+    Core { id: nativeCore }
 
     signal reset
 
@@ -60,7 +60,7 @@ PlasmoidItem {
 
     Component {
         id: compactRepresentation
-        CompactRepresentation { core: core }
+        CompactRepresentation { core: nativeCore }
     }
 
     property QtObject globalFavorites: rootModel.favoritesModel

@@ -166,7 +166,7 @@ PlasmaComponents.ScrollView {
                                     var name = repeater.model.data(idx, Qt.DisplayRole)
                                     return name || repeater.model.modelForRow(index).description || ""
                                 }
-                                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.88
+                                font.pointSize: Design.smallFontSize
                                 font.weight: Font.DemiBold
                                 color: Kirigami.Theme.textColor
                                 opacity: 0.75
