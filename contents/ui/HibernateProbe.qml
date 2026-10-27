@@ -21,6 +21,9 @@ Item {
     width: 0
     height: 0
 
+    // Optional Rust accelerator supplied by Footer.qml. When absent the
+    // original JavaScript parser is used.
+    property var core: null
     property var powerSession: null
     property bool known: false
     property bool available: false
@@ -89,7 +92,8 @@ Item {
                     return;
                 }
 
-                let reply = PowerLogic.parseCanHibernate(out);
+                let reply = root.core !== null ? root.core.hibernateParse(out) : null;
+                if (reply === null) reply = PowerLogic.parseCanHibernate(out);
                 if (!reply.known) {
                     root.known = false;
                     root.lastError = "Unexpected logind reply: " + out.trim();
@@ -97,7 +101,10 @@ Item {
                 }
 
                 root.status = reply.status;
-                root.available = PowerLogic.isHibernateAvailable(reply.status);
+                let available = root.core !== null ? root.core.hibernateAvailable(reply.status) : null;
+                root.available = available === null
+                    ? PowerLogic.isHibernateAvailable(reply.status)
+                    : available;
                 root.known = true;
                 root.lastError = "";
             } else if (source.indexOf("Hibernate b true") !== -1 && code !== 0) {

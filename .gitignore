@@ -1,0 +1,6 @@
+# Native build output (Rust target + CMake)
+/build/
+/rust/target/
+
+# QML module staged into the widget package by scripts/build-native.sh --stage
+/contents/ui/core/org/

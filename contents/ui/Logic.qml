@@ -8,6 +8,9 @@ import QtQuick
 import org.kde.plasma.plasma5support as Plasma5Support
 
 Item {
+    // Optional Rust accelerator, supplied by Footer.qml.
+    property var core: null
+
     Plasma5Support.DataSource {
         id: executable
         engine: "executable"
@@ -17,15 +20,23 @@ Item {
         }
     }
 
+    // Every argument is shell-quoted: URLs come from file models and desktop
+    // entries, so they must not be able to inject a command.
+    function shq(value) {
+        if (core !== null) return core.shellQuote(value);
+        return "'" + String(value).replace(/'/g, "'\\''") + "'";
+    }
+
     function openUrl(url) {
-        if (url.toString().endsWith(".desktop")) {
-            executable.connectSource("kioclient exec " + url)
+        var target = String(url);
+        if (target.endsWith(".desktop")) {
+            executable.connectSource("kioclient exec " + shq(target));
         } else {
-            executable.connectSource("xdg-open " + url)
+            executable.connectSource("xdg-open " + shq(target));
         }
     }
-    
+
     function runCommand(cmd) {
-        executable.connectSource(cmd)
+        executable.connectSource(cmd);
     }
 }

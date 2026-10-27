@@ -30,7 +30,9 @@ import org.kde.plasma.private.sessions
 
 RowLayout{
 
-    Logic { id: monLogic }
+    Logic { id: monLogic; core: root.core }
+
+    property var core: null
 
     spacing: Kirigami.Units.largeSpacing
 
@@ -74,6 +76,7 @@ RowLayout{
     HibernateProbe {
         id: hibernateProbe
         powerSession: sessionManager
+        core: root.core
     }
 
     readonly property bool hibernateAvailable: hibernateProbe.hibernateAvailable

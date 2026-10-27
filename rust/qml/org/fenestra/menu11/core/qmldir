@@ -1,0 +1,4 @@
+module org.fenestra.menu11.core
+optional plugin org_fenestra_menu11_core
+classname org_fenestra_menu11_core_plugin
+typeinfo plugin.qmltypes
