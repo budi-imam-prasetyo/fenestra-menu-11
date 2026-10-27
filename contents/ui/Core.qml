@@ -66,11 +66,6 @@ QtObject {
         return bridge !== null ? bridge.launchRecord(raw, appId, day, hour, nowMs) : null;
     }
 
-    // → 0-10 score or null.
-    function launchScore(raw, appId, day, hour) {
-        return bridge !== null ? bridge.launchScore(raw, appId, day, hour) : null;
-    }
-
     // → bool or null.
     function launchHasWorkflow(raw, day, hour, threshold) {
         return bridge !== null ? bridge.launchHasWorkflow(raw, day, hour, threshold) : null;
@@ -115,14 +110,9 @@ QtObject {
         return bridge !== null ? bridge.fuzzyRank(commands, query) : null;
     }
 
-    // → { top: [modelRow…], week: [modelRow…] } or null.
+    // → { top: [modelRow…], week: [modelRow…], order: [modelRow…] } or null.
     function docsRank(rows, nowSeconds) {
         return bridge !== null ? bridge.docsRank(rows, nowSeconds) : null;
-    }
-
-    // → model rows in display order or null.
-    function docsSort(rows) {
-        return bridge !== null ? bridge.docsSort(rows) : null;
     }
 
     // ── KDE Connect ────────────────────────────────────────────────────────
@@ -137,11 +127,6 @@ QtObject {
         return bridge !== null ? bridge.kdeconnectParseContacts(output) : null;
     }
 
-    // → at most `limit` matching contacts or null.
-    function kdeconnectFilterContacts(contacts, query, limit) {
-        return bridge !== null ? bridge.kdeconnectFilterContacts(contacts, query, limit) : null;
-    }
-
     // → French-formatted number or null.
     function kdeconnectFormatNumber(number) {
         return bridge !== null ? bridge.kdeconnectFormatNumber(number) : null;
@@ -150,10 +135,6 @@ QtObject {
     // → contacts read from ~/.local/share/kpeoplevcard/kdeconnect-<device>.
     function kdeconnectVcardLoad(device) {
         return bridge !== null ? bridge.kdeconnectVcardLoad(device) : null;
-    }
-
-    function vcardLoad(directory) {
-        return bridge !== null ? bridge.vcardLoad(directory) : null;
     }
 
     // ── Command builders (return "" when native is unavailable) ────────────
@@ -212,10 +193,6 @@ QtObject {
 
     function cmdMprisSet(device, property, value) {
         return bridge !== null ? bridge.cmdMprisSet(device, property, value) : "";
-    }
-
-    function cmdRequestPhoto(device, fileUrl) {
-        return bridge !== null ? bridge.cmdRequestPhoto(device, fileUrl) : "";
     }
 
     function cmdNotifySend(title, body, icon) {

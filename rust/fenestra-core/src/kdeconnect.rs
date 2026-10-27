@@ -8,7 +8,6 @@
 
 use crate::fuzzy::fold;
 use serde::Serialize;
-use serde_json::{json, Value};
 
 /// One KDE Connect device, matching the object shape used by the QML panel.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -125,72 +124,6 @@ pub fn digits_of(text: &str) -> String {
     text.chars().filter(char::is_ascii_digit).collect()
 }
 
-fn only_number_characters(text: &str) -> bool {
-    text.chars()
-        .all(|character| character.is_ascii_digit() || " +.-()".contains(character))
-}
-
-/// Filter contacts by name or number, with French `06…`/`+33 6…` equivalence.
-///
-/// `contacts` is the JSON array produced by [`parse_contacts`] or the panel.
-/// The query is accent-insensitive. At most `limit` contacts are returned.
-pub fn filter_contacts(contacts: &Value, query: &str, limit: usize) -> Value {
-    let needle = fold(query).trim().to_owned();
-    if needle.is_empty() || limit == 0 {
-        return json!([]);
-    }
-    let digits = digits_of(&needle);
-    let alternate = if let Some(rest) = digits.strip_prefix('0') {
-        format!("33{rest}")
-    } else if let Some(rest) = digits.strip_prefix("33") {
-        format!("0{rest}")
-    } else {
-        String::new()
-    };
-    let number_query = digits.len() >= 3 && only_number_characters(&needle);
-
-    let mut matches = Vec::new();
-    if let Some(array) = contacts.as_array() {
-        for contact in array {
-            let Some(name) = contact.get("name").and_then(Value::as_str) else {
-                continue;
-            };
-            let number = contact
-                .get("number")
-                .and_then(Value::as_str)
-                .unwrap_or_default();
-            let key = contact
-                .get("key")
-                .and_then(Value::as_str)
-                .map(str::to_owned)
-                .unwrap_or_else(|| fold(name));
-            let contact_digits = contact
-                .get("digits")
-                .and_then(Value::as_str)
-                .map(str::to_owned)
-                .unwrap_or_else(|| digits_of(number));
-
-            let by_name = key.contains(&needle);
-            let by_number = number_query
-                && (contact_digits.contains(&digits)
-                    || (!alternate.is_empty() && contact_digits.contains(&alternate)));
-            if by_name || by_number {
-                matches.push(json!({
-                    "name": name,
-                    "number": number,
-                    "type": contact.get("type").and_then(Value::as_str).unwrap_or_default(),
-                    "key": key,
-                    "digits": contact_digits,
-                }));
-                if matches.len() >= limit {
-                    break;
-                }
-            }
-        }
-    }
-    Value::Array(matches)
-}
-
 /// Format a phone number the way the panel displays it.
 ///
 /// French ten-digit numbers and `+33` numbers are grouped in pairs; anything
@@ -279,42 +212,6 @@ mod tests {
         assert_eq!(contacts[0].key, "elodie martin");
         assert_eq!(contacts[0].digits, "0635939841");
         assert_eq!(contacts[1].contact_type, "");
-    }
-
-    #[test]
-    fn filters_by_accent_insensitive_name() {
-        let contacts = serde_json::to_value(parse_contacts(
-            "Élodie Martin\t06 35 93 98 41\tmobile\nBob\t+33612345678\t\n",
-        ))
-        .unwrap();
-        let found = filter_contacts(&contacts, "elod", 6);
-        assert_eq!(found.as_array().unwrap().len(), 1);
-        assert_eq!(found[0]["name"], "Élodie Martin");
-    }
-
-    #[test]
-    fn filters_by_number_with_french_equivalence() {
-        let contacts = serde_json::to_value(parse_contacts(
-            "Alice\t06 12 34 56 78\tmobile\nBob\t07 00 00 00 00\t\n",
-        ))
-        .unwrap();
-        let local = filter_contacts(&contacts, "0612", 6);
-        assert_eq!(local.as_array().unwrap().len(), 1);
-        assert_eq!(local[0]["name"], "Alice");
-        let international = filter_contacts(&contacts, "+33 6 12 34 56 78", 6);
-        assert_eq!(international.as_array().unwrap().len(), 1);
-        assert_eq!(international[0]["name"], "Alice");
-    }
-
-    #[test]
-    fn filter_respects_the_limit_and_empty_queries() {
-        let contacts = serde_json::to_value(parse_contacts("A\t1\nA B\t2\nA C\t3\n")).unwrap();
-        assert_eq!(
-            filter_contacts(&contacts, "a", 2).as_array().unwrap().len(),
-            2
-        );
-        assert_eq!(filter_contacts(&contacts, "", 6), json!([]));
-        assert_eq!(filter_contacts(&contacts, "a", 0), json!([]));
     }
 
     #[test]

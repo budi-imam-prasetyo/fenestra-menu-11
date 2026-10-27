@@ -32,7 +32,8 @@ Part of the **Fenestra** series, designed in particular for people coming from W
 
 - **KDE Plasma 6** (Qt 6). Plasma 5 is not supported.
 - **Wayland** session. X11 is not supported.
-- For the mobile device panel: **KDE Connect** installed and a paired phone, `qdbus` (`qdbus6` or `qdbus-qt6`) and `python3`.
+- For the mobile device panel: **KDE Connect** installed and a paired phone, `qdbus` (`qdbus6` or `qdbus-qt6`) and `python3`. The native core replaces the Python contact reader, but the notification listing still uses Python.
+- Optional: **Rust**, **CMake** and Qt 6 development files to build the native accelerator (see [Native core](#native-core-optional)).
 
 ## Firewall
 
@@ -72,6 +73,40 @@ kpackagetool6 -t Plasma/Applet -i fenestra-menu-11
 Then replace your current menu: right-click the Start button → **Show Alternatives…** → **Fenestra Menu 11**.
 
 To update a manual install: `kpackagetool6 -t Plasma/Applet -u fenestra-menu-11`.
+
+If you built the native core inside the checkout, install through
+`scripts/package.sh` instead: `kpackagetool6` copies the whole directory, and
+installing the checkout directly would copy `build/` and `rust/target/` into the
+widget.
+
+## Native core (optional)
+
+The widget can load a small Rust module that evaluates the rules previously
+duplicated in QML and JavaScript: command-palette ranking, recommended-document
+ordering, hibernation capability parsing, launch history, new-application
+bookkeeping, KDE Connect listings and vCard contacts, and the validated shell
+commands. Layout, animations, Plasma integration and all fallbacks stay in QML.
+
+```sh
+scripts/build-native.sh            # build only
+scripts/build-native.sh --stage    # build and copy the module into the widget
+scripts/package.sh --native        # clean package + install
+```
+
+Requirements: Rust 1.85+, CMake 3.24+, Qt 6.5+ development files. CXX-Qt 0.10
+is fetched automatically during the first build unless `CXXQT_DIR` is set.
+
+A package without the module keeps working unchanged; the widget logs one line
+and uses its JavaScript implementations. Settings, package id and Plasma
+integration are identical in both cases. See [docs/native-core.md](docs/native-core.md)
+for the architecture, API, measurements, build/install details and limitations.
+
+## Tests
+
+```sh
+tests/run.sh             # regression tests (wiring, configuration, translations)
+scripts/test-native.sh   # Rust formatting, lint, unit tests and QML bridge tests
+```
 
 ## Languages
 

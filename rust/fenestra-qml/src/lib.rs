@@ -1,10 +1,12 @@
 //! Optional QML accelerator for Fenestra Menu 11.
 //!
-//! This crate is a CXX-Qt dynamic QML module named `Fenestra.Core`. It is
-//! deliberately stateless: QML keeps the widget state, and each method takes
-//! and returns plain values (mostly JSON strings). When the module cannot be
-//! installed, `contents/ui/Core.qml` falls back to the JavaScript helpers, so
-//! the widget keeps working without the native module.
+//! This crate is a CXX-Qt dynamic QML module named `org.fenestra.menu11.core`
+//! whose singleton is `FenestraCore`. It is deliberately stateless: QML keeps
+//! the widget state, and each method takes and returns plain values (mostly
+//! JSON strings). When the module cannot be installed, `contents/ui/Core.qml`
+//! falls back to the JavaScript helpers, so the widget keeps working without
+//! the native module. Every method must therefore stay side-effect free apart
+//! from the explicitly requested filesystem reads.
 
 use cxx_qt_lib::QString;
 use fenestra_core::{commands, docs, fuzzy, hibernate, kdeconnect, launch, new_apps, vcard};
@@ -44,14 +46,6 @@ pub mod qobject {
             now_ms: i64,
         ) -> QString;
         #[qinvokable]
-        fn launch_score(
-            self: &FenestraCore,
-            counts_json: &QString,
-            app_id: &QString,
-            day: i32,
-            hour: i32,
-        ) -> i32;
-        #[qinvokable]
         fn launch_has_workflow(
             self: &FenestraCore,
             counts_json: &QString,
@@ -60,7 +54,7 @@ pub mod qobject {
             threshold: i32,
         ) -> bool;
         #[qinvokable]
-        fn launch_top_total(self: &FenestraCore, counts_json: &QString) -> QString;
+        fn launch_top_total(self: &FenestraCore, counts_json: &QString) -> i32;
 
         #[qinvokable]
         fn new_apps_diff(
@@ -97,27 +91,15 @@ pub mod qobject {
 
         #[qinvokable]
         fn docs_rank(self: &FenestraCore, rows_json: &QString, now_seconds: i64) -> QString;
-        #[qinvokable]
-        fn docs_sort(self: &FenestraCore, rows_json: &QString) -> QString;
 
         #[qinvokable]
         fn kdeconnect_parse_devices(self: &FenestraCore, output: &QString) -> QString;
         #[qinvokable]
         fn kdeconnect_parse_contacts(self: &FenestraCore, output: &QString) -> QString;
         #[qinvokable]
-        fn kdeconnect_filter_contacts(
-            self: &FenestraCore,
-            contacts_json: &QString,
-            query: &QString,
-            limit: i32,
-        ) -> QString;
-        #[qinvokable]
         fn kdeconnect_format_number(self: &FenestraCore, number: &QString) -> QString;
         #[qinvokable]
         fn kdeconnect_vcard_load(self: &FenestraCore, device: &QString) -> QString;
-
-        #[qinvokable]
-        fn vcard_load(self: &FenestraCore, directory: &QString) -> QString;
 
         #[qinvokable]
         fn shell_quote(self: &FenestraCore, value: &QString) -> QString;
@@ -159,8 +141,6 @@ pub mod qobject {
             property: &QString,
             value: i32,
         ) -> QString;
-        #[qinvokable]
-        fn cmd_request_photo(self: &FenestraCore, device: &QString, file_url: &QString) -> QString;
         #[qinvokable]
         fn cmd_notify_send(
             self: &FenestraCore,
@@ -245,16 +225,6 @@ impl qobject::FenestraCore {
         encode(&updated)
     }
 
-    fn launch_score(&self, counts_json: &QString, app_id: &QString, day: i32, hour: i32) -> i32 {
-        let counts = parse_object(&text(counts_json));
-        launch::workflow_score(
-            &counts,
-            &text(app_id),
-            day.max(0) as u32,
-            hour.max(0) as u32,
-        ) as i32
-    }
-
     fn launch_has_workflow(
         &self,
         counts_json: &QString,
@@ -271,9 +241,9 @@ impl qobject::FenestraCore {
         )
     }
 
-    fn launch_top_total(&self, counts_json: &QString) -> QString {
+    fn launch_top_total(&self, counts_json: &QString) -> i32 {
         let counts = parse_object(&text(counts_json));
-        string(&launch::top_total(&counts).to_string())
+        launch::top_total(&counts).min(i32::MAX as u64) as i32
     }
 
     fn new_apps_diff(&self, known_json: &QString, current_json: &QString) -> QString {
@@ -342,31 +312,12 @@ impl qobject::FenestraCore {
         encode(&docs::build_lists(&rows, now_seconds))
     }
 
-    fn docs_sort(&self, rows_json: &QString) -> QString {
-        let rows = parse_array(&text(rows_json));
-        encode_or_empty(&docs::sort_rows(&rows))
-    }
-
     fn kdeconnect_parse_devices(&self, output: &QString) -> QString {
         encode_or_empty(&kdeconnect::parse_devices(&text(output)))
     }
 
     fn kdeconnect_parse_contacts(&self, output: &QString) -> QString {
         encode_or_empty(&kdeconnect::parse_contacts(&text(output)))
-    }
-
-    fn kdeconnect_filter_contacts(
-        &self,
-        contacts_json: &QString,
-        query: &QString,
-        limit: i32,
-    ) -> QString {
-        let contacts = parse_array(&text(contacts_json));
-        encode(&kdeconnect::filter_contacts(
-            &contacts,
-            &text(query),
-            limit.max(0) as usize,
-        ))
     }
 
     fn kdeconnect_format_number(&self, number: &QString) -> QString {
@@ -385,19 +336,6 @@ impl qobject::FenestraCore {
             .join(".local/share/kpeoplevcard")
             .join(format!("kdeconnect-{device}"));
         match vcard::load_directory(&directory) {
-            Ok(contacts) => encode_or_empty(&contacts),
-            Err(_) => string("[]"),
-        }
-    }
-
-    fn vcard_load(&self, directory: &QString) -> QString {
-        let path = text(directory);
-        let path = if let Some(rest) = path.strip_prefix("file://") {
-            rest
-        } else {
-            &path
-        };
-        match vcard::load_directory(Path::new(path)) {
             Ok(contacts) => encode_or_empty(&contacts),
             Err(_) => string("[]"),
         }
@@ -461,10 +399,6 @@ impl qobject::FenestraCore {
             &text(property),
             value as i64,
         ))
-    }
-
-    fn cmd_request_photo(&self, device: &QString, file_url: &QString) -> QString {
-        command(commands::request_photo(&text(device), &text(file_url)))
     }
 
     fn cmd_notify_send(&self, title: &QString, body: &QString, icon: &QString) -> QString {

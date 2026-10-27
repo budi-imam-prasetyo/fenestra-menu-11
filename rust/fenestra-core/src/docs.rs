@@ -5,6 +5,9 @@
 //! timestamp descending, then by their original model row ascending so ties
 //! stay stable. The first six rows feed the visible page; rows from the last
 //! seven days feed the "this week" list.
+//!
+//! Both lists and the full display order are computed here so the QML layer
+//! does not need to duplicate the limits or the week window.
 
 use serde_json::{json, Value};
 
@@ -13,11 +16,10 @@ pub const TOP_LIMIT: usize = 6;
 /// Length of the "recent" window, in seconds.
 pub const WEEK_SECONDS: i64 = 7 * 86_400;
 
-/// Sort rows of `{ "i": modelRow, "url": url, "t": epochSeconds }`.
-///
-/// Returns the model row indices in display order. Rows without a numeric `i`
-/// are ignored. A missing or non-positive `t` sorts last but keeps model order.
-pub fn sort_rows(rows: &Value) -> Vec<usize> {
+/// Parse `{ "i": modelRow, "t": epochSeconds }` rows into
+/// `(modelRow, timestamp, inputPosition)` triples, ignoring rows without a
+/// numeric `i`.
+fn parse_rows(rows: &Value) -> Vec<(usize, i64, usize)> {
     let mut parsed: Vec<(usize, i64, usize)> = rows
         .as_array()
         .map(|array| {
@@ -40,35 +42,19 @@ pub fn sort_rows(rows: &Value) -> Vec<usize> {
             .then_with(|| left.0.cmp(&right.0))
             .then_with(|| left.2.cmp(&right.2))
     });
-    parsed.into_iter().map(|(index, _, _)| index).collect()
+    parsed
 }
 
-/// Build the two recommendation lists for a given time.
+/// Build the recommendation lists for a given time.
 ///
-/// Returns `{ "top": [modelRow...], "week": [modelRow...] }`. `week` only
-/// contains rows with a positive timestamp inside the last seven days.
+/// `rows` is `[{ "i": modelRow, "url": url, "t": epochSeconds }]`. Returns
+/// `{ "top": [modelRow...], "week": [modelRow...], "order": [modelRow...] }`.
+/// `top` is the first [`TOP_LIMIT`] rows, `week` only contains rows with a
+/// positive timestamp inside the last [`WEEK_SECONDS`], and `order` is the
+/// full display order. A missing or non-positive `t` sorts last but keeps
+/// model order.
 pub fn build_lists(rows: &Value, now_seconds: i64) -> Value {
-    let mut entries: Vec<(usize, i64, usize)> = rows
-        .as_array()
-        .map(|array| {
-            array
-                .iter()
-                .enumerate()
-                .filter_map(|(position, row)| {
-                    let index = row.get("i").and_then(Value::as_u64)? as usize;
-                    let timestamp = row.get("t").and_then(Value::as_i64).unwrap_or(0);
-                    Some((index, timestamp, position))
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    entries.sort_by(|left, right| {
-        right
-            .1
-            .cmp(&left.1)
-            .then_with(|| left.0.cmp(&right.0))
-            .then_with(|| left.2.cmp(&right.2))
-    });
+    let entries = parse_rows(rows);
 
     let top: Vec<usize> = entries
         .iter()
@@ -100,7 +86,7 @@ mod tests {
             { "i": 2, "url": "file:///c", "t": 300 },
             { "i": 3, "url": "file:///d", "t": 0 }
         ]);
-        assert_eq!(sort_rows(&rows), vec![1, 2, 0, 3]);
+        assert_eq!(build_lists(&rows, 1000)["order"], json!([1, 2, 0, 3]));
     }
 
     #[test]
@@ -110,7 +96,7 @@ mod tests {
             { "i": 2, "url": "file:///b", "t": 10 },
             { "i": 4, "url": "file:///c" }
         ]);
-        assert_eq!(sort_rows(&rows), vec![2, 4, 5]);
+        assert_eq!(build_lists(&rows, 1000)["order"], json!([2, 4, 5]));
     }
 
     #[test]
@@ -135,7 +121,10 @@ mod tests {
 
     #[test]
     fn malformed_input_is_empty() {
-        assert!(sort_rows(&json!({})).is_empty());
+        assert_eq!(
+            build_lists(&json!({}), 0),
+            json!({ "top": [], "week": [], "order": [] })
+        );
         assert_eq!(
             build_lists(&json!([]), 0),
             json!({ "top": [], "week": [], "order": [] })

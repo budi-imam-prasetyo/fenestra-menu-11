@@ -96,30 +96,31 @@ pub fn send_sms(device: &str, number: &str, message: &str) -> Result<String> {
     Ok(format!("sh -c {}; echo CODE=$?", shell_quote(&command)?))
 }
 
-fn qdbus(
-    device: &str,
-    suffix: &str,
-    interface: &str,
-    method: &str,
-    argument: Option<&str>,
-) -> Result<String> {
-    validate_device(device)?;
-    let path = format!("/modules/kdeconnect/devices/{device}/{suffix}");
+/// Build a `qdbus` call for one KDE Connect object.
+///
+/// `qdbus` takes the member as a single `interface.method` argument, so the two
+/// halves must not be split into separate argv entries: doing so makes qdbus
+/// look for a method named after the interface's last component and the call
+/// fails at run time. This matches the command the QML layer already used.
+fn qdbus_script(path: &str, member: &str, argument: Option<&str>) -> Result<String> {
     let mut call = format!(
-        "\"$Q\" org.kde.kdeconnect {} {} {}",
-        shell_quote(&path)?,
-        interface,
-        method
+        "Q=$(command -v qdbus6 || command -v qdbus-qt6 || command -v qdbus); \"$Q\" org.kde.kdeconnect {} {}",
+        shell_quote(path)?,
+        shell_quote(member)?
     );
     if let Some(argument) = argument {
         call.push(' ');
         call.push_str(&shell_quote(argument)?);
     }
+    Ok(call)
+}
+
+fn qdbus(device: &str, suffix: &str, member: &str, argument: Option<&str>) -> Result<String> {
+    validate_device(device)?;
+    let path = format!("/modules/kdeconnect/devices/{device}/{suffix}");
     Ok(format!(
         "sh -c {}",
-        shell_quote(&format!(
-            "Q=$(command -v qdbus6 || command -v qdbus-qt6 || command -v qdbus); {call}"
-        ))?
+        shell_quote(&qdbus_script(&path, member, argument)?)?
     ))
 }
 
@@ -129,8 +130,7 @@ pub fn dismiss_notification(device: &str, id: &str) -> Result<String> {
     qdbus(
         device,
         &format!("notifications/{id}"),
-        "org.kde.kdeconnect.device.notifications.notification",
-        "dismiss",
+        "org.kde.kdeconnect.device.notifications.notification.dismiss",
         None,
     )
 }
@@ -141,8 +141,7 @@ pub fn reply_notification(device: &str, id: &str, message: &str) -> Result<Strin
     qdbus(
         device,
         &format!("notifications/{id}"),
-        "org.kde.kdeconnect.device.notifications.notification",
-        "sendReply",
+        "org.kde.kdeconnect.device.notifications.notification.sendReply",
         Some(message),
     )
 }
@@ -155,8 +154,7 @@ pub fn mpris_action(device: &str, action: &str) -> Result<String> {
     qdbus(
         device,
         "mprisremote",
-        "org.kde.kdeconnect.device.mprisremote",
-        "sendAction",
+        "org.kde.kdeconnect.device.mprisremote.sendAction",
         Some(action),
     )
 }
@@ -170,24 +168,7 @@ pub fn mpris_set(device: &str, property: &str, value: i64) -> Result<String> {
         device,
         "mprisremote",
         &format!("org.kde.kdeconnect.device.mprisremote.{property}"),
-        &value.to_string(),
-        None,
-    )
-}
-
-/// Ask the phone to take a photo and save it at `file_url` (`file://…`).
-pub fn request_photo(device: &str, file_url: &str) -> Result<String> {
-    if !file_url.starts_with("file://") {
-        return Err(CoreError::Invalid(
-            "photo target must be a file:// URL".into(),
-        ));
-    }
-    qdbus(
-        device,
-        "photo",
-        "org.kde.kdeconnect.device.photo",
-        "requestPhoto",
-        Some(file_url),
+        Some(&value.to_string()),
     )
 }
 
@@ -263,6 +244,71 @@ mod tests {
         assert!(dismiss_notification("abc", "").is_err());
         assert!(reply_notification("abc", "42", "hi").is_ok());
     }
+    #[test]
+    fn qdbus_receives_one_dotted_member_and_quoted_arguments() {
+        let dismiss = qdbus_script(
+            "/modules/kdeconnect/devices/abc/notifications/42",
+            "org.kde.kdeconnect.device.notifications.notification.dismiss",
+            None,
+        )
+        .unwrap();
+        assert!(
+            dismiss.ends_with(
+                "'/modules/kdeconnect/devices/abc/notifications/42' \
+                 'org.kde.kdeconnect.device.notifications.notification.dismiss'"
+            ),
+            "{dismiss}"
+        );
+
+        let reply = qdbus_script(
+            "/modules/kdeconnect/devices/abc/notifications/42",
+            "org.kde.kdeconnect.device.notifications.notification.sendReply",
+            Some("it's fine"),
+        )
+        .unwrap();
+        assert!(
+            reply.ends_with(
+                "'org.kde.kdeconnect.device.notifications.notification.sendReply' 'it'\\''s fine'"
+            ),
+            "{reply}"
+        );
+
+        let next = qdbus_script(
+            "/modules/kdeconnect/devices/abc/mprisremote",
+            "org.kde.kdeconnect.device.mprisremote.sendAction",
+            Some("Next"),
+        )
+        .unwrap();
+        assert!(
+            next.ends_with("'org.kde.kdeconnect.device.mprisremote.sendAction' 'Next'"),
+            "{next}"
+        );
+
+        let volume = qdbus_script(
+            "/modules/kdeconnect/devices/abc/mprisremote",
+            "org.kde.kdeconnect.device.mprisremote.volume",
+            Some("40"),
+        )
+        .unwrap();
+        assert!(
+            volume.ends_with("'org.kde.kdeconnect.device.mprisremote.volume' '40'"),
+            "{volume}"
+        );
+    }
+
+    #[test]
+    fn runtime_commands_use_the_dotted_member() {
+        let dismiss = dismiss_notification("abc", "42").unwrap();
+        assert!(dismiss.contains("notification.dismiss"));
+        assert!(dismiss.contains("/modules/kdeconnect/devices/abc/notifications/42"));
+        assert!(!dismiss.contains("notification dismiss"));
+
+        let next = mpris_action("abc", "Next").unwrap();
+        assert!(next.contains("mprisremote.sendAction"));
+        let volume = mpris_set("abc", "volume", 40).unwrap();
+        assert!(volume.contains("mprisremote.volume"));
+        assert!(volume.contains("40"));
+    }
 
     #[test]
     fn mpris_actions_and_properties_are_allow_listed() {
@@ -270,13 +316,6 @@ mod tests {
         assert!(mpris_action("abc", "Next; reboot").is_err());
         assert!(mpris_set("abc", "volume", 40).is_ok());
         assert!(mpris_set("abc", "volume; reboot", 40).is_err());
-    }
-
-    #[test]
-    fn photo_target_must_be_a_file_url() {
-        assert!(request_photo("abc", "file:///tmp/a.jpg").is_ok());
-        assert!(request_photo("abc", "/tmp/a.jpg").is_err());
-        assert!(request_photo("abc", "file:///tmp/a b.jpg").is_ok());
     }
 
     #[test]

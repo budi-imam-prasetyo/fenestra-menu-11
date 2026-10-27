@@ -51,16 +51,12 @@ QtObject {
             FenestraCore.launch_record(String(raw), String(appId), day, hour, nowMs), null);
     }
 
-    function launchScore(raw, appId, day, hour) {
-        return FenestraCore.launch_score(String(raw), String(appId), day, hour);
-    }
-
     function launchHasWorkflow(raw, day, hour, threshold) {
         return FenestraCore.launch_has_workflow(String(raw), day, hour, threshold);
     }
 
     function launchTopTotal(raw) {
-        return parseInt(FenestraCore.launch_top_total(String(raw)), 10) || 0;
+        return FenestraCore.launch_top_total(String(raw));
     }
 
     // ── New application bookkeeping ────────────────────────────────────────
@@ -100,10 +96,6 @@ QtObject {
             FenestraCore.docs_rank(JSON.stringify(rows), nowSeconds), null);
     }
 
-    function docsSort(rows) {
-        return _decode(FenestraCore.docs_sort(JSON.stringify(rows)), null);
-    }
-
     // ── KDE Connect ────────────────────────────────────────────────────────
 
     function kdeconnectParseDevices(output) {
@@ -114,22 +106,12 @@ QtObject {
         return _decode(FenestraCore.kdeconnect_parse_contacts(String(output)), null);
     }
 
-    function kdeconnectFilterContacts(contacts, query, limit) {
-        return _decode(
-            FenestraCore.kdeconnect_filter_contacts(
-                JSON.stringify(contacts), String(query), limit), null);
-    }
-
     function kdeconnectFormatNumber(number) {
         return String(FenestraCore.kdeconnect_format_number(String(number)));
     }
 
     function kdeconnectVcardLoad(device) {
         return _decode(FenestraCore.kdeconnect_vcard_load(String(device)), null);
-    }
-
-    function vcardLoad(directory) {
-        return _decode(FenestraCore.vcard_load(String(directory)), null);
     }
 
     // ── Command builders ───────────────────────────────────────────────────
@@ -155,9 +137,6 @@ QtObject {
     }
     function cmdMprisSet(device, property, value) {
         return String(FenestraCore.cmd_mpris_set(String(device), String(property), value));
-    }
-    function cmdRequestPhoto(device, fileUrl) {
-        return String(FenestraCore.cmd_request_photo(String(device), String(fileUrl)));
     }
     function cmdNotifySend(title, body, icon) {
         return String(FenestraCore.cmd_notify_send(String(title), String(body), String(icon)));
