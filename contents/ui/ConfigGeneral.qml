@@ -60,10 +60,8 @@ KCM.SimpleKCM {
     property alias cfg_labels2lines: labels2lines.checked
 
     property alias cfg_appsIconSize: appsIconSize.currentIndex
-    property alias cfg_docsIconSize: docsIconSize.currentIndex
     property alias cfg_displayPosition: displayPosition.currentIndex
     property alias cfg_kdeConnectMemoriser: kdeConnectMemoriserCb.checked   // Fenestra : option du volet
-    property alias cfg_showRecentDocs: showRecentDocsCb.checked
     property alias cfg_showRecentApps: showRecentAppsCb.checked
     property alias cfg_enableShellRunner: enableShellRunnerCb.checked
     property alias cfg_showQuickActions: showQuickActionsCb.checked
@@ -185,13 +183,6 @@ KCM.SimpleKCM {
             model: [i18n("Small"),i18n("Medium"),i18n("Large"), i18n("Huge")]
         }
 
-        ComboBox {
-            id: docsIconSize
-            Kirigami.FormData.label: i18n("Docs icon size:")
-            Layout.fillWidth: true
-            model: [i18n("Small"),i18n("Medium"),i18n("Large"), i18n("Huge")]
-        }
-
 
         ComboBox {
 
@@ -232,12 +223,6 @@ KCM.SimpleKCM {
         Item {
             Kirigami.FormData.isSection: true
             Kirigami.FormData.label: i18n("All Apps")
-        }
-
-        CheckBox {
-            id: showRecentDocsCb
-            Kirigami.FormData.label: i18n("Recent Documents:")
-            text: i18n("Show Recent Documents section")
         }
 
         // Fenestra : option du volet : remplace « Default view mode » et « Default sort order » (grisés)

@@ -812,3 +812,11 @@ msgstr ""
 msgid "General"
 msgstr ""
 
+#: contents/ui/MenuRepresentation.qml
+msgid "All apps"
+msgstr ""
+
+#: contents/ui/MenuRepresentation.qml
+msgid "No applications in this category"
+msgstr ""
+

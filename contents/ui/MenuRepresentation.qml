@@ -86,21 +86,6 @@ PlasmaCore.Dialog {
         }
     }
 
-    property int docsIconSize: {
-        switch (Plasmoid.configuration.docsIconSize) {
-        case 0:
-            return Kirigami.Units.iconSizes.smallMedium;
-        case 1:
-            return Kirigami.Units.iconSizes.medium;
-        case 2:
-            return Kirigami.Units.iconSizes.large;
-        case 3:
-            return Kirigami.Units.iconSizes.huge;
-        default:
-            return Kirigami.Units.iconSizes.medium;
-        }
-    }
-
     property int cellSizeHeight: iconSize + Kirigami.Units.gridUnit * 2 + (2 * Math.max(highlightItemSvg.margins.top + highlightItemSvg.margins.bottom, highlightItemSvg.margins.left + highlightItemSvg.margins.right))
     property int cellSizeWidth: cellSizeHeight + Kirigami.Units.gridUnit
 
@@ -155,14 +140,7 @@ PlasmaCore.Dialog {
         rootItem.loadFolders();
         rootItem.loadAllAppsFolders();
         rootItem.loadLaunchCounts();
-        try {
-            rootItem.refreshDocDates();
-        } catch (e) {
-            console.warn("fenestra-menu11 : page recommandations (dates) :", e);
-        }
-        if (Plasmoid.configuration.allAppsViewMode === 2) {
-            ensureCategoryModel();
-        }
+        ensureCategoryModel();
     }
 
     function reset() {
@@ -173,7 +151,6 @@ PlasmaCore.Dialog {
         view.currentIndex = 0;
         mainFlick.contentY = 0;
         globalFavoritesGrid.currentIndex = -1;
-        documentsGrid.currentIndex = -1;
         allAppsGrid.currentIndex = -1;
         rootItem.pinnedCurrentPage = 0;
         kicker.searchRunnerFilter = "all";
@@ -303,8 +280,6 @@ PlasmaCore.Dialog {
         Timer { id: attenteRecentrage; interval: root.delaiFermetureVolet; onTriggered: root.recentrerMenu() }
         NumberAnimation { id: glissementMenu; target: root; property: "x"; easing.type: Easing.OutCubic }   // Fenestra : glissement du menu
         Timer { id: apparitionVolet; interval: 0; onTriggered: if (root.visible && !kdeConnectPanel.visible) kdeConnectPanel.toggle() }
-        // Fenestra : préchargement au démarrage : dates des recommandations prêtes avant la 1re ouverture
-        Timer { id: prechargement; interval: 3000; onTriggered: root.chargerApresOuverture(true) }
 
 
         property int widthComputed: root.cellSizeWidth * root.colonnesAuto + Kirigami.Units.gridUnit * 2
@@ -423,28 +398,36 @@ PlasmaCore.Dialog {
 
         // ── Pinned Folders ──────────────────────────────────────────────────
         property var pinnedFoldersData: []
+        property string loadedPinnedFolders: ""
 
         function loadFolders() {
-            var raw = Plasmoid.configuration.pinnedFolders;
+            var raw = Plasmoid.configuration.pinnedFolders || "";
+            if (raw === loadedPinnedFolders) return;
+            loadedPinnedFolders = raw;
             if (!raw || raw.length === 0) { pinnedFoldersData = []; return; }
             try { pinnedFoldersData = JSON.parse(raw); } catch(e) { pinnedFoldersData = []; }
         }
 
         function saveFolders() {
             Plasmoid.configuration.pinnedFolders = JSON.stringify(pinnedFoldersData);
+            loadedPinnedFolders = Plasmoid.configuration.pinnedFolders;
         }
 
         // ── All Apps Folders ────────────────────────────────────────────────
         property var allAppsFoldersData: []
+        property string loadedAllAppsFolders: ""
 
         function loadAllAppsFolders() {
-            var raw = Plasmoid.configuration.allAppsFolders;
+            var raw = Plasmoid.configuration.allAppsFolders || "";
+            if (raw === loadedAllAppsFolders) return;
+            loadedAllAppsFolders = raw;
             if (!raw || raw.length === 0) { allAppsFoldersData = []; return; }
             try { allAppsFoldersData = JSON.parse(raw); } catch(e) { allAppsFoldersData = []; }
         }
 
         function saveAllAppsFolders() {
             Plasmoid.configuration.allAppsFolders = JSON.stringify(allAppsFoldersData);
+            loadedAllAppsFolders = Plasmoid.configuration.allAppsFolders;
         }
 
         function launchFolderApp(desktopId) {
@@ -515,11 +498,9 @@ PlasmaCore.Dialog {
         }
 
         function buildAllAppsCombo() {
-            // détache le modèle pendant la reconstruction : un seul recalcul à la fin,
-            // au lieu d'un par insertion (source de la latence en mode Grille)
-            allAppsGrid.model = null;
+            // Rebuild only when the catalog, sort mode or folder data changes.
             allAppsComboModel.clear();
-            if (!sortedAppsModel.sourceModel) { allAppsGrid.model = allAppsComboModel; return; }
+            if (!sortedAppsModel.sourceModel) return;
 
             var displayRole    = kickerDisplayRole;
             var decorationRole = kickerDecorationRole;
@@ -658,7 +639,7 @@ PlasmaCore.Dialog {
             }
 
             for (var ci = 0; ci < combined.length; ci++) allAppsComboModel.append(combined[ci]);
-            allAppsGrid.model = allAppsComboModel; // réattache : un seul recalcul ici
+            // Keep the view bound to a stable model; category switches do not rebuild this list.
         }
 
         // Descend récursivement dans les sous-catégories d'un modèle (ex: Jeux -> Arcade
@@ -729,9 +710,12 @@ PlasmaCore.Dialog {
 
         // ── Launch Frequency Tracking ───────────────────────────────────────
         property var launchCounts: ({})
+        property string loadedLaunchCounts: ""
 
         function loadLaunchCounts() {
-            var raw = Plasmoid.configuration.appLaunchCounts;
+            var raw = Plasmoid.configuration.appLaunchCounts || "";
+            if (raw === loadedLaunchCounts) return;
+            loadedLaunchCounts = raw;
             if (!raw || raw.length === 0) { launchCounts = ({}); return; }
             var parsed = root.core !== null ? root.core.launchParseCounts(raw) : null;
             if (parsed !== null) { launchCounts = parsed; return; }
@@ -740,6 +724,7 @@ PlasmaCore.Dialog {
 
         function saveLaunchCounts() {
             Plasmoid.configuration.appLaunchCounts = JSON.stringify(launchCounts);
+            loadedLaunchCounts = Plasmoid.configuration.appLaunchCounts;
         }
 
         // Returns the current workflow bucket key: "day-slot"
@@ -948,193 +933,6 @@ PlasmaCore.Dialog {
             property var favoritesModel: sourceModel ? sourceModel.favoritesModel : null
         }
 
-        // Recommandations : seulement les 6 éléments affichés (pas de lignes cachées qui cassent le clavier)
-        KItemModels.KSortFilterProxyModel {
-            id: docsLimitedModel
-            filterRowCallback: function (sourceRow, sourceParent) { return sourceRow < 6; }
-
-            function trigger(row, actionId, argument) {
-                var srcIdx = mapToSource(index(row, 0));
-                if (srcIdx.valid && sourceModel)
-                    return sourceModel.trigger(srcIdx.row, actionId, argument);
-            }
-
-            property var favoritesModel: sourceModel ? sourceModel.favoritesModel : null
-        }
-
-        // ── Dates des recommandations (date de modification des fichiers, lue avec stat) ──
-        property var docEpochs: ({})       // url -> secondes (date de modification)
-        property var docDates: ({})        // url -> texte affiché (« jeudi à 10:05 »)
-
-        function formatDocDate(epochSeconds) {
-            var d = new Date(epochSeconds * 1000);
-            var now = new Date();
-            var loc = Qt.locale();
-            var time = Qt.formatTime(d, "HH:mm");
-            var dayMs = 86400000;
-            var startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-            var startDoc = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-            var diffDays = Math.round((startToday - startDoc) / dayMs);
-            if (diffDays <= 0) return i18n("today at %1", time);
-            if (diffDays === 1) return i18n("yesterday at %1", time);
-            if (diffDays < 7) return i18n("%1 at %2", loc.dayName(d.getDay(), Locale.LongFormat), time);
-            var s = d.getDate() + " " + loc.monthName(d.getMonth(), Locale.ShortFormat);
-            if (d.getFullYear() !== now.getFullYear()) s += " " + d.getFullYear();
-            return s;
-        }
-
-        // heure « à la Windows » : « Il y a 18h » pendant 24 h, puis « hier à … », « jeudi à 10:05 »
-        function formatRecentTime(epochSeconds) {
-            var diffMin = Math.floor((Date.now() - epochSeconds * 1000) / 60000);
-            if (diffMin < 1) return i18n("Just now");
-            if (diffMin < 60) return i18n("%1 min ago", diffMin);
-            if (diffMin < 1440) return i18n("%1 h ago", Math.floor(diffMin / 60));
-            return formatDocDate(epochSeconds);
-        }
-
-        function refreshDocDates() {
-            var urls = [];
-            var src = docsLimitedModel.sourceModel;
-            if (!src) return;
-            for (var i = 0; i < Math.min(src.rowCount(), 60); i++) {
-                var u = String(src.data(src.index(i, 0), kickerUrlRole));
-                if (u.indexOf("file://") === 0) urls.push(u);
-            }
-            if (urls.length === 0) { rebuildDocModels(); return; }
-            // date de DERNIÈRE UTILISATION (base d'activité KDE, comme Dolphin),
-            // repli sur la date de modification ; adresses complètes, décodées côté Python
-            var quoted = urls.map(function (u) {
-                return "'" + u.replace(/'/g, "'\\''") + "'";
-            }).join(" ");
-            var lecteur = "import sys, os, sqlite3\nfrom urllib.parse import unquote\ndb = os.path.expanduser(\"~/.local/share/kactivitymanagerd/resources/database\")\nusage = {}\ntry:\n    c = sqlite3.connect(\"file:\" + db + \"?mode=ro\", uri=True, timeout=2)\n    for r, t in c.execute(\"SELECT targettedResource, MAX(lastUpdate) FROM ResourceScoreCache GROUP BY targettedResource\"):\n        if t: usage[r] = int(t)\nexcept Exception:\n    pass\nfor u in sys.argv[1:]:\n    p = unquote(u[7:]) if u.startswith(\"file://\") else u\n    t = usage.get(p) or usage.get(u) or usage.get(\"file://\" + p)\n    if not t:\n        try: t = int(os.stat(p).st_mtime)\n        except Exception: t = 0\n    print(t)\n";
-            var cmd = "python3 -c '" + lecteur + "' " + quoted;
-            statSource.pending[cmd] = urls;
-            statSource.connectSource(cmd);
-        }
-
-        Plasma5Support.DataSource {
-            id: statSource
-            engine: "executable"
-            connectedSources: []
-            property var pending: ({})
-
-            onNewData: function (source, data) {
-                var lines = String(data["stdout"] || "").split("\n");
-                var urls = statSource.pending[source] || [];
-                var res = JSON.parse(JSON.stringify(rootItem.docDates));
-                var eps = JSON.parse(JSON.stringify(rootItem.docEpochs));
-                for (var i = 0; i < urls.length; i++) {
-                    var t = parseInt(lines[i]);
-                    if (t > 0) { res[urls[i]] = rootItem.formatDocDate(t); eps[urls[i]] = t; }
-                }
-                rootItem.docDates = res;
-                rootItem.docEpochs = eps;
-                rootItem.rebuildDocModels();
-                delete statSource.pending[source];
-                disconnectSource(source);
-            }
-        }
-
-        // ── Recommandations triées par date (la plus récente d'abord) ──
-        // listes construites ici : page 1 = 6 plus récents, page complète = 7 derniers jours
-        function resolveDocRow(url, hintRow) {
-            var m = docsLimitedModel.sourceModel;
-            if (!m) return -1;
-            var n = m.rowCount();
-            if (hintRow >= 0 && hintRow < n && String(m.data(m.index(hintRow, 0), kickerUrlRole)) === url) return hintRow;
-            for (var i = 0; i < n; i++) {
-                if (String(m.data(m.index(i, 0), kickerUrlRole)) === url) return i;
-            }
-            return -1;
-        }
-
-        function triggerDoc(entry, actionId, argument) {
-            if (!entry) return false;
-            var r = resolveDocRow(entry.url, entry.srcRow);
-            if (r < 0) { refreshDocDates(); return false; }
-            return docsLimitedModel.sourceModel.trigger(r, actionId, argument);
-        }
-
-        function docActionList(entry) {
-            if (!entry) return [];
-            var r = resolveDocRow(entry.url, entry.srcRow);
-            if (r < 0) return [];
-            var m = docsLimitedModel.sourceModel;
-            return m.data(m.index(r, 0), kickerActionListRole) || [];
-        }
-
-        function rebuildDocModels() {
-            var m = docsLimitedModel.sourceModel;
-            docsTopModel.clear();
-            docsWeekModel.clear();
-            if (!m) return;
-            var now = Date.now() / 1000;
-            var rows = [];
-            for (var i = 0; i < Math.min(m.rowCount(), 60); i++) {
-                var u = String(m.data(m.index(i, 0), kickerUrlRole));
-                rows.push({ i: i, url: u, t: docEpochs[u] || 0 });
-            }
-            // Ordre d'affichage, page limitée et fenêtre « cette semaine » :
-            // la règle est dans le cœur Rust quand il est disponible.
-            var lists = root.core !== null ? root.core.docsRank(rows, now) : null;
-            var topRows = null, weekRows = null;
-            if (lists !== null) {
-                var ordered = [];
-                for (var o = 0; o < lists.order.length; o++) ordered.push(rows[lists.order[o]]);
-                rows = ordered;
-                topRows = {};
-                for (var t = 0; t < lists.top.length; t++) topRows[lists.top[t]] = true;
-                weekRows = {};
-                for (var w = 0; w < lists.week.length; w++) weekRows[lists.week[w]] = true;
-            } else {
-                // plus récent d'abord ; sans date : à la fin, dans l'ordre d'usage de Plasma
-                rows.sort(function (a, b) { return (b.t - a.t) || (a.i - b.i); });
-            }
-            for (var k = 0; k < rows.length; k++) {
-                var mi = m.index(rows[k].i, 0);
-                var deco = m.data(mi, kickerDecorationRole);
-                var entry = {
-                    display: String(m.data(mi, kickerDisplayRole) || ""),
-                    decoration: (typeof deco === "string") ? deco : "",
-                    description: String(m.data(mi, kickerDescriptionRole) || ""),
-                    favoriteId: String(m.data(mi, kickerFavoriteIdRole) || ""),
-                    url: rows[k].url,
-                    hasActionList: true,
-                    disabled: false,
-                    srcRow: rows[k].i
-                };
-                var inTop = lists !== null ? topRows[rows[k].i] === true : k < 6;
-                var inWeek = lists !== null
-                    ? weekRows[rows[k].i] === true
-                    : (rows[k].t > 0 && now - rows[k].t < 7 * 86400);
-                if (inTop) docsTopModel.append(entry);
-                if (inWeek) docsWeekModel.append(entry);
-            }
-        }
-
-        function scheduleDocsRefresh() { docsRefreshTimer.restart(); }
-
-        Timer {
-            id: docsRefreshTimer
-            interval: 500
-            repeat: false
-            onTriggered: rootItem.refreshDocDates()
-        }
-
-        ListModel {
-            id: docsTopModel
-            property var favoritesModel: docsLimitedModel.favoritesModel
-            function trigger(row, actionId, argument) { return rootItem.triggerDoc(get(row), actionId, argument); }
-            function actionListForRow(row) { return rootItem.docActionList(get(row)); }
-        }
-
-        ListModel {
-            id: docsWeekModel
-            property var favoritesModel: docsLimitedModel.favoritesModel
-            function trigger(row, actionId, argument) { return rootItem.triggerDoc(get(row), actionId, argument); }
-            function actionListForRow(row) { return rootItem.docActionList(get(row)); }
-        }
-
         // ── Le curseur de frappe reste dans la recherche ──
         // si le focus part vers une liste sans navigation au clavier (simple survol), on le rend à la recherche
         Connections {
@@ -1144,8 +942,8 @@ PlasmaCore.Dialog {
                 if (!root.visible || rootItem.keyNavRecently()) return;
                 var p = root.activeFocusItem;
                 while (p) {
-                    if (p === globalFavoritesGrid || p === documentsGrid || p === allAppsGrid
-                            || p === recentAllGrid || p === allAppsCategoryGrid) {
+                    if (p === globalFavoritesGrid || p === allAppsGrid
+                            || p === allAppsCategoryGrid) {
                         Qt.callLater(function () {
                             if (root.visible && !rootItem.keyNavRecently()) searchField.forceActiveFocus();
                         });
@@ -1326,16 +1124,30 @@ PlasmaCore.Dialog {
             connectedSources: []
             property string currentSource: ""
 
+            Timer {
+                id: appsWatchTimeout
+                interval: 15000
+                onTriggered: {
+                    if (appsWatch.currentSource !== "") {
+                        appsWatch.disconnectSource(appsWatch.currentSource);
+                        appsWatch.currentSource = "";
+                    }
+                }
+            }
+
             function poll() {
-                if (currentSource !== "") disconnectSource(currentSource);
+                if (currentSource !== "") return; // never start overlapping scans
                 currentSource = rootItem.desktopListCmd + " #" + Date.now();
                 connectSource(currentSource);
+                appsWatchTimeout.restart();
             }
 
             onNewData: function (source, data) {
                 var out = String(data["stdout"] || "").trim();
                 disconnectSource(source);
                 if (source !== currentSource) return;
+                appsWatchTimeout.stop();
+                currentSource = "";
                 rootItem.handleDesktopList(out === "" ? [] : out.split("\n"));
             }
         }
@@ -1347,14 +1159,13 @@ PlasmaCore.Dialog {
             onNewData: function (source, data) { disconnectSource(source); }
         }
 
-        // surveillance toutes les minutes (1er passage 20 s après le chargement)
+        // Background catalog check once per minute; no overlapping jobs.
         Timer {
             id: appsWatchTimer
-            interval: 5000
+            interval: 60000
             repeat: true
             running: rootItem.newAppsReady
             onTriggered: {
-                interval = 10000;
                 appsWatch.poll();
             }
         }
@@ -1374,7 +1185,11 @@ PlasmaCore.Dialog {
 
         Connections {
             target: categoryRootModel
-            function onRefreshed() { rootItem.categoryRevision++; rootItem.resolvePendingApps(); }
+            function onRefreshed() {
+                rootItem.categoryRevision++;
+                rootItem.refreshAvailableCategories();
+                rootItem.resolvePendingApps();
+            }
         }
 
         // ── Défilement en cours : les infobulles sont coupées pendant que la liste bouge sous la souris ──
@@ -1395,6 +1210,84 @@ PlasmaCore.Dialog {
             id: allAppsComboModel
             // Exposes favoritesModel so delegates can Pin/Unpin via the same KActivities model
             property var favoritesModel: sortedAppsModel.favoritesModel
+        }
+
+        ListModel {
+            id: categoryAppsModel
+            property var favoritesModel: sortedAppsModel.favoritesModel
+        }
+
+        property int activeCategoryRow: -1
+        property string activeCategoryName: ""
+        property var availableCategories: [{ row: -1, label: i18n("All apps") }]
+        property var categoryMembership: ({})
+
+        function refreshAvailableCategories() {
+            var choices = [{ row: -1, label: i18n("All apps") }];
+            var membership = {};
+            for (var row = 0; row < categoryRootModel.rowCount(); row++) {
+                var sub = categoryRootModel.modelForRow(row);
+                var items = [];
+                collectCategoryApps(sub, items, {});
+                if (items.length === 0) continue;
+                var name = String(categoryRootModel.data(categoryRootModel.index(row, 0), Qt.DisplayRole)
+                                  || (sub ? sub.description : "") || "");
+                if (!name) continue;
+                var ids = {};
+                for (var i = 0; i < items.length; i++) ids[items[i].favoriteId] = true;
+                membership[row] = ids;
+                choices.push({ row: row, label: name });
+            }
+            categoryMembership = membership;
+            availableCategories = choices;
+            if (activeCategoryRow >= 0) {
+                var replacement = -1;
+                for (var j = 1; j < choices.length; j++) {
+                    if (choices[j].label === activeCategoryName) { replacement = choices[j].row; break; }
+                }
+                activeCategoryRow = replacement;
+                if (replacement < 0) activeCategoryName = "";
+                rebuildSelectedCategory();
+            }
+        }
+
+        function rebuildSelectedCategory() {
+            categoryAppsModel.clear();
+            if (activeCategoryRow < 0 || !sortedAppsModel.sourceModel) return;
+            var ids = categoryMembership[activeCategoryRow] || {};
+            var seen = {};
+            for (var i = 0; i < sortedAppsModel.rowCount(); i++) {
+                var idx = sortedAppsModel.index(i, 0);
+                var fid = String(sortedAppsModel.data(idx, kickerFavoriteIdRole) || "");
+                if (!fid || !ids[fid] || seen[fid]) continue;
+                seen[fid] = true;
+                categoryAppsModel.append({
+                    itemType: "app",
+                    display: String(sortedAppsModel.data(idx, kickerDisplayRole) || ""),
+                    decoration: sortedAppsModel.data(idx, kickerDecorationRole) || "",
+                    favoriteId: fid,
+                    description: String(sortedAppsModel.data(idx, kickerDescriptionRole) || ""),
+                    url: String(sortedAppsModel.data(idx, kickerUrlRole) || ""),
+                    disabled: false, hasActionList: false,
+                    sourceRow: i, folderIdx: -1, indented: false, expanded: false
+                });
+            }
+        }
+
+        function selectCategory(row) {
+            if (activeCategoryRow === row) return;
+            // A category with no matching apps can still occur after a catalog refresh.
+            activeCategoryRow = row;
+            activeCategoryName = "";
+            for (var i = 1; i < availableCategories.length; i++) {
+                if (availableCategories[i].row === row) {
+                    activeCategoryName = availableCategories[i].label;
+                    break;
+                }
+            }
+            allAppsGrid.currentIndex = -1;
+            mainFlick.contentY = Math.min(mainFlick.contentY, allAppsHeader.y);
+            rebuildSelectedCategory();
         }
 
         PC3.TextField {
@@ -1443,8 +1336,6 @@ PlasmaCore.Dialog {
                         viewModePopup.visible = false;
                     } else if (root.searching) {
                         searchField.clear();
-                    } else if (view.currentIndex === 2) {
-                        view.currentIndex = 0;
                     } else {
                         root.toggle();
                     }
@@ -1740,8 +1631,7 @@ PlasmaCore.Dialog {
             }
             onCurrentIndexChanged: {
                 globalFavoritesGrid.currentIndex = -1;
-                documentsGrid.currentIndex = -1;
-            }
+                    }
 
             width: rootItem.widthComputed / 0.1
             height: Math.max(Kirigami.Units.gridUnit * 8, Math.min(rootItem.viewWanted, rootItem.height - view.y - footer.height - 0))
@@ -1763,8 +1653,6 @@ PlasmaCore.Dialog {
                 function tryActivate(row, col) {
                     if (!rootItem.pinnedCollapsed)
                         globalFavoritesGrid.tryActivate(row, col);
-                    else if (documentsGrid.visible)
-                        documentsGrid.tryActivate(0, 0);
                     else
                         allAppsGrid.tryActivate(0, 0);
                 }
@@ -1859,7 +1747,8 @@ PlasmaCore.Dialog {
                             globalFavoritesGrid.tryActivate(0, 0);
                         } else {
                             globalFavoritesGrid.focus = false;
-                            documentsGrid.tryActivate(0, 0);
+                            categoryFilters.currentIndex = 0;
+                            if (categoryFilters.currentItem) categoryFilters.currentItem.forceActiveFocus();
                         }
                     }
                     onKeyNavLeft: {
@@ -2119,10 +2008,7 @@ PlasmaCore.Dialog {
                         ? Kirigami.Units.iconSizes.medium + Kirigami.Units.largeSpacing * 3
                         : 0
 
-                    height: recentAppsStripHeight
-                          + butttonActionAllApps.implicitHeight
-                          + Kirigami.Units.largeSpacing * 2
-                          + (docsIconSize + Kirigami.Units.largeSpacing * 2) * 3
+                    height: recentAppsStripHeight + Kirigami.Units.gridUnit * 3 + Kirigami.Units.largeSpacing
 
                     // Recently opened apps — horizontal icon strip
                     Item {
@@ -2224,80 +2110,75 @@ PlasmaCore.Dialog {
                         }
                     }
 
-                    RowLayout {
-                        id: docsHeaderRow
-                        // + largeSpacing + 5 : compense le padding interne du bouton (comme Catégories)
-                        width: parent.width + Kirigami.Units.largeSpacing + 5
-                        height: butttonActionAllApps.implicitHeight
-                        y: docsContainer.recentAppsStripHeight
-                        opacity: Plasmoid.configuration.showRecentDocs ? 1.0 : 0.0
-                        enabled: Plasmoid.configuration.showRecentDocs
-
-                        Kirigami.Icon {
-                            source: 'tag-recents'
-                            implicitHeight: Kirigami.Units.iconSizes.smallMedium
-                            implicitWidth: Kirigami.Units.iconSizes.smallMedium
-                        }
-
-                        PlasmaExtras.Heading {
-                            color: colorWithAlpha(Kirigami.Theme.textColor, 0.8)
-                            level: 5
-                            text: i18n("Recommended")
-                            Layout.leftMargin: Kirigami.Units.smallSpacing
-                            font.weight: Font.Bold
-                        }
-
-                        Item {
-                            Layout.fillWidth: true
-                        }
-
-                        SectionButton {
-                            id: butttonActionRecentMore
-                            flat: false
-                            iconName: "go-next"
-                            text: i18n("Show all")
-                            buttonHeight: 25
-                            onClicked: view.currentIndex = 2
-                        }
-                    }
-
-                    ItemGridView {
-                        id: documentsGrid
-                        whiteHighlight: true // surlignement blanc 50 %
-                        recentDocsMode: true
-                        y: docsContainer.recentAppsStripHeight + butttonActionAllApps.implicitHeight + Kirigami.Units.largeSpacing * 2
-                        x: -rootItem.listIconPad
-                        width: parent.width + rootItem.listIconPad * 2
-                        height: (docsIconSize + Kirigami.Units.largeSpacing * 2) * 3
-                        itemColumns: 2
-                        dragEnabled: true
-                        dropEnabled: true
-                        cellWidth: parent.width * 0.48
-                        cellHeight: docsIconSize + Kirigami.Units.largeSpacing * 2
-                        iconSize: docsIconSize
-                        onWheelUnhandled: (delta) => {
-                            var maxY = Math.max(0, mainFlick.contentHeight - mainFlick.height);
-                            mainFlick.contentY = Math.max(0, Math.min(maxY, mainFlick.contentY - delta));
-                        }
+                    // Categories come from Kicker's desktop-entry-aware application tree.
+                    // The list model and category membership are refreshed only when Kicker refreshes.
+                    ListView {
+                        id: categoryFilters
+                        y: docsContainer.recentAppsStripHeight + Kirigami.Units.smallSpacing
+                        width: parent.width
+                        height: Kirigami.Units.gridUnit * 3
+                        orientation: ListView.Horizontal
+                        spacing: Kirigami.Units.smallSpacing
                         clip: true
-                        visible: Plasmoid.configuration.showRecentDocs && view.currentIndex === 0
-                        onKeyNavUp: {
-                            if (rootItem.pinnedCollapsed) {
-                                searchField.focus = true;
-                            } else {
-                                globalFavoritesGrid.tryActivate(0, 0);
+                        boundsBehavior: Flickable.StopAtBounds
+                        model: rootItem.availableCategories
+                        delegate: Rectangle {
+                            id: chip
+                            required property var modelData
+                            required property int index
+                            readonly property bool selected: rootItem.activeCategoryRow === modelData.row
+                            width: Math.min(categoryFilters.width - 2, chipLabel.implicitWidth + Kirigami.Units.gridUnit * 2)
+                            height: categoryFilters.height - Kirigami.Units.smallSpacing
+                            radius: Math.min(height / 2, Kirigami.Units.gridUnit)
+                            color: selected ? Kirigami.Theme.highlightColor
+                                            : (chipHover.hovered ? root.colorWithAlpha(Kirigami.Theme.textColor, 0.12)
+                                                                 : root.colorWithAlpha(Kirigami.Theme.textColor, 0.06))
+                            border.width: activeFocus ? 2 : 1
+                            border.color: activeFocus ? Kirigami.Theme.highlightColor
+                                                       : root.colorWithAlpha(Kirigami.Theme.textColor, 0.12)
+                            activeFocusOnTab: true
+                            Accessible.role: Accessible.Button
+                            Accessible.name: modelData.label
+                            Accessible.checked: selected
+                            function activate() {
+                                chip.forceActiveFocus();
+                                categoryFilters.currentIndex = index;
+                                rootItem.selectCategory(modelData.row);
+                                categoryFilters.positionViewAtIndex(index, ListView.Contain);
                             }
-                            documentsGrid.focus = false;
-                        }
-                        onKeyNavDown: {
-                            documentsGrid.focus = false;
-                            allAppsGrid.tryActivate(0, 0);
-                        }
-                        Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Tab) {
+                            Keys.onReturnPressed: event => { activate(); event.accepted = true; }
+                            Keys.onEnterPressed: event => { activate(); event.accepted = true; }
+                            Keys.onSpacePressed: event => { activate(); event.accepted = true; }
+                            Keys.onLeftPressed: event => {
+                                categoryFilters.currentIndex = Math.max(0, index - 1);
+                                categoryFilters.positionViewAtIndex(categoryFilters.currentIndex, ListView.Contain);
+                                if (categoryFilters.currentItem) categoryFilters.currentItem.forceActiveFocus();
                                 event.accepted = true;
-                                documentsGrid.focus = false;
-                                footerContent.forceActiveFocus();
+                            }
+                            Keys.onRightPressed: event => {
+                                categoryFilters.currentIndex = Math.min(categoryFilters.count - 1, index + 1);
+                                categoryFilters.positionViewAtIndex(categoryFilters.currentIndex, ListView.Contain);
+                                if (categoryFilters.currentItem) categoryFilters.currentItem.forceActiveFocus();
+                                event.accepted = true;
+                            }
+                            Keys.onDownPressed: event => {
+                                allAppsGrid.tryActivate(0, 0);
+                                event.accepted = true;
+                            }
+                            HoverHandler { id: chipHover }
+                            Text {
+                                id: chipLabel
+                                anchors.centerIn: parent
+                                text: chip.modelData.label
+                                color: chip.selected ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
+                                font.weight: chip.selected ? Font.DemiBold : Font.Normal
+                                elide: Text.ElideRight
+                                width: Math.min(implicitWidth, chip.width - Kirigami.Units.gridUnit)
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: chip.activate()
                             }
                         }
                     }
@@ -2363,7 +2244,7 @@ PlasmaCore.Dialog {
                     PlasmaExtras.Heading {
                         color: colorWithAlpha(Kirigami.Theme.textColor, 0.8)
                         level: 5
-                        text: i18n("All")
+                        text: rootItem.activeCategoryRow < 0 ? i18n("All") : rootItem.activeCategoryName
                         font.weight: Font.Bold
                     }
 
@@ -2386,8 +2267,18 @@ PlasmaCore.Dialog {
                     readonly property bool gridMode: Plasmoid.configuration.allAppsViewMode === 1
                     x: gridMode ? 0 : listInset
                     width: parent.width - (gridMode ? 0 : listInset) * 2
-                    height: allAppsGrid.height
-                    visible: Plasmoid.configuration.allAppsViewMode !== 2
+                    height: rootItem.activeCategoryRow >= 0 && categoryAppsModel.count === 0
+                            ? Math.max(allAppsGrid.cellHeight, emptyCategoryLabel.implicitHeight + Kirigami.Units.gridUnit * 2)
+                            : allAppsGrid.height
+                    visible: Plasmoid.configuration.allAppsViewMode !== 2 || rootItem.activeCategoryRow >= 0
+
+                    Text {
+                        id: emptyCategoryLabel
+                        anchors.centerIn: parent
+                        visible: rootItem.activeCategoryRow >= 0 && categoryAppsModel.count === 0
+                        text: i18n("No applications in this category")
+                        color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.65)
+                    }
 
                     // la molette doit faire défiler la page, pas la grille (qui capte les événements)
                     MouseArea {
@@ -2409,7 +2300,7 @@ PlasmaCore.Dialog {
                         width: parent.width
                         readonly property int columnsCount: cellWidth > 0 ? Math.max(1, Math.floor(width / cellWidth)) : 1
                         // la grille ne défile plus : elle prend toute sa hauteur, c'est la page qui défile
-                        height: Math.max(1, Math.ceil(allAppsComboModel.count / columnsCount)) * cellHeight
+                        height: Math.max(1, Math.ceil((rootItem.activeCategoryRow < 0 ? allAppsComboModel.count : categoryAppsModel.count) / columnsCount)) * cellHeight
                         itemColumns: Plasmoid.configuration.allAppsViewMode === 1 ? 1 : 2
                         labels2lines: Plasmoid.configuration.allAppsViewMode === 1 && Plasmoid.configuration.labels2lines
                         dragEnabled: true
@@ -2423,14 +2314,12 @@ PlasmaCore.Dialog {
                                     : root.iconSize + Kirigami.Units.gridUnit + Kirigami.Units.largeSpacing
                         iconSize: root.iconSize
                         clip: true
+                        model: rootItem.activeCategoryRow < 0 ? allAppsComboModel : categoryAppsModel
                         onKeyNavUp: {
                             allAppsGrid.focus = false;
-                            if (documentsGrid.visible)
-                                documentsGrid.tryActivate(documentsGrid.lastRow(), 0);
-                            else if (rootItem.pinnedCollapsed)
-                                searchField.focus = true;
-                            else
-                                globalFavoritesGrid.tryActivate(0, 0);
+                            categoryFilters.currentIndex = 0;
+                            if (categoryFilters.currentItem) categoryFilters.currentItem.forceActiveFocus();
+                            else searchField.focus = true;
                         }
                         Keys.onPressed: event => {
                             if (event.key === Qt.Key_Tab) {
@@ -2444,7 +2333,8 @@ PlasmaCore.Dialog {
 
                 CategoryTiles {
                     id: allAppsCategoryGrid
-                    visible: Plasmoid.configuration.allAppsViewMode === 2
+                    visible: Plasmoid.configuration.allAppsViewMode === 2 && rootItem.activeCategoryRow < 0
+                    height: visible ? implicitHeight : 0
                     x: rootItem.sectionInset
                     width: parent.width - rootItem.sectionInset * 2
                     flyoutOpen: categoryFlyout.visible
@@ -2493,13 +2383,6 @@ PlasmaCore.Dialog {
                     function onCurrentIndexChanged() {
                         if (globalFavoritesGrid.currentIndex < 0 || !rootItem.keyNavRecently()) return;
                         mainFlick.ensureVisible(0, globalFavoritesGrid.y + globalFavoritesGrid.height);
-                    }
-                }
-                Connections {
-                    target: documentsGrid
-                    function onCurrentIndexChanged() {
-                        if (documentsGrid.currentIndex < 0 || !rootItem.keyNavRecently()) return;
-                        mainFlick.ensureVisible(docsContainer.y, docsContainer.y + docsContainer.height);
                     }
                 }
             } // fin mainFlick
@@ -3017,86 +2900,6 @@ PlasmaCore.Dialog {
                 }
             }
 
-            // PAGE 4 (index 2) — Nos recommandations (page complète : les 7 derniers jours)
-            Item {
-                id: recentPage
-                width: view.width
-                height: view.height
-
-                function tryActivate(row, col) {
-                    recentAllGrid.tryActivate(row, col);
-                }
-
-                RowLayout {
-                    id: recentPageHeader
-                    x: rootItem.sectionInset
-                    width: rootItem.width - rootItem.margeCote * 2 - rootItem.sectionInset * 2
-                    height: butttonActionAllApps.implicitHeight
-
-                    PlasmaExtras.Heading {
-                        color: colorWithAlpha(Kirigami.Theme.textColor, 0.8)
-                        level: 5
-                        text: i18n("Recommended")
-                        font.weight: Font.Bold
-                        Layout.alignment: Qt.AlignVCenter
-                    }
-
-                    Item { Layout.fillWidth: true }
-
-                    SectionButton {
-                        iconName: "go-previous"
-                        iconLeft: true
-                        text: i18n("Back")
-                        onClicked: {
-                            recentAllGrid.currentIndex = -1;
-                            view.currentIndex = 0;
-                        }
-                    }
-                }
-
-                ItemGridView {
-                    id: recentAllGrid
-                    whiteHighlight: true // surlignement blanc 50 %
-                    // le surlignement s'arrête juste après l'heure (pas au bord du menu)
-                    highlightRightPad: Math.max(0, timeRightPad - Kirigami.Units.smallSpacing * 2)
-                    onContentYChanged: rootItem.noteScrolling()
-                    x: Math.max(0, rootItem.sectionInset - rootItem.listIconPad)
-                    y: recentPageHeader.height + Kirigami.Units.largeSpacing
-                    width: recentPage.width - x
-                    height: recentPage.height - y
-                    // l'heure s'arrête au même bord droit que les boutons de section
-                    property int timeRightPad: Math.max(0, x + width - (rootItem.width - rootItem.margeCote * 2 - rootItem.sectionInset))
-                    model: docsWeekModel
-                    recentDocsMode: true
-                    recentDocsWide: true
-                    itemColumns: 1
-                    dragEnabled: true
-                    dropEnabled: false
-                    verticalScrollBarPolicy: PC3.ScrollBar.AsNeeded
-                    cellWidth: width
-                    cellHeight: docsIconSize + Kirigami.Units.largeSpacing * 2
-                    iconSize: docsIconSize
-                    clip: true
-                    onKeyNavUp: {
-                        recentAllGrid.focus = false;
-                        searchField.focus = true;
-                    }
-                    Keys.onPressed: event => {
-                        if (event.key === Qt.Key_Tab) {
-                            event.accepted = true;
-                            searchField.focus = true;
-                            recentAllGrid.focus = false;
-                        }
-                    }
-                }
-
-                Text {
-                    anchors.centerIn: parent
-                    visible: recentAllGrid.count === 0
-                    text: i18n("No recent documents this week")
-                    color: colorWithAlpha(Kirigami.Theme.textColor, 0.55)
-                }
-            }
         }
 
         // ── Fenêtre « Affichage » de la rubrique Tout (même style que la fenêtre du bouton Alimentation) ──
@@ -3138,7 +2941,6 @@ PlasmaCore.Dialog {
                 keepMenuOpen = true;
                 visible = false;
                 Qt.callLater(function () {
-                    if (mode !== 2) allAppsGrid.model = null;   // un seul recalcul de la grille
                     Plasmoid.configuration.allAppsViewMode = mode;
                     if (mode === 2) root.ensureCategoryModel();
                     else rootItem.buildAllAppsCombo();
@@ -3462,8 +3264,9 @@ PlasmaCore.Dialog {
         Connections {
             target: allAppsGrid
             function onItemActivated(index, actionId, argument) {
-                if (index < 0 || index >= allAppsComboModel.count) return;
-                var entry = allAppsComboModel.get(index);
+                var activeModel = rootItem.activeCategoryRow < 0 ? allAppsComboModel : categoryAppsModel;
+                if (index < 0 || index >= activeModel.count) return;
+                var entry = activeModel.get(index);
                 if (entry.itemType === "letterHeader") return;
                 if (entry.itemType === "folder") {
                     rootItem.toggleFolderExpand(index);
@@ -3491,7 +3294,7 @@ PlasmaCore.Dialog {
         Connections {
             target: allAppsGrid
             function onFolderEditRequested(index) {
-                if (index < 0 || index >= allAppsComboModel.count) return
+                if (rootItem.activeCategoryRow >= 0 || index < 0 || index >= allAppsComboModel.count) return
                 var entry = allAppsComboModel.get(index)
                 if (!entry || entry.itemType !== "folder") return
                 var cols = Math.max(1, Math.floor(allAppsGrid.width / allAppsGrid.cellWidth))
@@ -4550,9 +4353,6 @@ PlasmaCore.Dialog {
                         viewModePopup.visible = false;
                     } else if (root.searching) {
                     reset();
-                } else if (view.currentIndex === 2) {
-                    view.currentIndex = 0;
-                    searchField.focus = true;
                 } else {
                     root.visible = false;
                 }
@@ -4581,17 +4381,12 @@ PlasmaCore.Dialog {
 
     function setModels() {
         globalFavoritesGrid.model = globalFavorites;
-        // Row order: [RecentApps(0), RecentDocs(1 if enabled), AllApps(1 or 2)]
+        // Row order: [RecentApps(0), AllApps(1)].
         recentAppsListView.model = rootModel.modelForRow(0);
-        var allAppsRow = Plasmoid.configuration.showRecentDocs ? 2 : 1;
+        var allAppsRow = 1;
         sortedAppsModel.sourceModel = rootModel.modelForRow(allAppsRow);
-        allAppsGrid.model = allAppsComboModel;
         rootItem.buildAllAppsCombo();
-        if (Plasmoid.configuration.showRecentDocs) {
-            docsLimitedModel.sourceModel = rootModel.modelForRow(1);
-            documentsGrid.model = docsTopModel;
-            rootItem.rebuildDocModels();
-        }
+        rootItem.rebuildSelectedCategory();
     }
 
     property bool categoryModelLoaded: false
@@ -4610,15 +4405,16 @@ PlasmaCore.Dialog {
     }
 
     function scrollToLetter(letter) {
-        if (allAppsComboModel.count === 0) return;
+        if ((rootItem.activeCategoryRow < 0 ? allAppsComboModel.count : categoryAppsModel.count) === 0) return;
 
         alphabetOverlay.currentLetter = letter;
         alphabetOverlay.opacity = 1;
         overlayTimer.restart();
 
         var targetIndex = -1;
-        for (var i = 0; i < allAppsComboModel.count; i++) {
-            var entry = allAppsComboModel.get(i);
+        var activeModel = rootItem.activeCategoryRow < 0 ? allAppsComboModel : categoryAppsModel;
+        for (var i = 0; i < activeModel.count; i++) {
+            var entry = activeModel.get(i);
             if (entry.indented) continue;  // skip expanded folder children
             var name = entry.display;
             if (name && name.length > 0) {
@@ -4647,6 +4443,5 @@ PlasmaCore.Dialog {
         rootModel.refreshed.connect(setModels);
         reset();
         rootModel.refresh();
-        prechargement.start();
     }
 }

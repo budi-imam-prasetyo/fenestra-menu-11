@@ -57,14 +57,8 @@ FocusScope {
     property var horizontalScrollBarPolicy: PlasmaComponents.ScrollBar.AlwaysOff
     property var verticalScrollBarPolicy: PlasmaComponents.ScrollBar.AlwaysOff
     property bool bypassArrowNav: false
-    // lignes des recommandations (icône + nom + « date · dossier », infobulle chemin complet)
-    property bool recentDocsMode: false
     // surlignement blanc 50 % + bordure (sinon bleu d'origine)
     property bool whiteHighlight: false
-    // raccourcit le surlignement à droite (px)
-    property int highlightRightPad: 0
-    // version pleine largeur (page « Nos recommandations ») : heure à droite, chemin sous le nom
-    property bool recentDocsWide: false
     // instant de la dernière touche de navigation (sert à ignorer les « sorties de souris » dues au défilement)
     function _keyNavRecently() {
         return typeof rootItem !== "undefined" && rootItem.keyNavRecently();
@@ -253,13 +247,6 @@ FocusScope {
             }
         }
 
-        Component {
-            id: aRecentDocDelegate
-            RecentDocDelegate {
-                iconSize: itemGrid.iconSize
-            }
-        }
-
         PlasmaComponents.ScrollView {
             id: scrollArea
 
@@ -349,11 +336,10 @@ FocusScope {
                     }
                 }
 
-                delegate: itemGrid.recentDocsMode ? aRecentDocDelegate : (itemColumns == 1 ? aItemGridDelegate : aItemGridDelegate2)
+                delegate: itemColumns == 1 ? aItemGridDelegate : aItemGridDelegate2
                 highlight: Item {
                     Rectangle {
                         anchors.fill: parent
-                        anchors.rightMargin: itemGrid.highlightRightPad
                         color: itemGrid.whiteHighlight ? (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff")
                         : Qt.rgba(Kirigami.Theme.highlightColor.r,
                         Kirigami.Theme.highlightColor.g,

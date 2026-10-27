@@ -1,6 +1,6 @@
 # Fenestra Menu 11
 
-A Windows 11 style start menu for KDE Plasma 6, with a built-in **mobile device panel** powered by KDE Connect.
+A modern application launcher for KDE Plasma 6, with a built-in **mobile device panel** powered by KDE Connect.
 
 Part of the **Fenestra** series, designed in particular for people coming from Windows, so they don't feel lost on a KDE Plasma desktop.
 
@@ -10,8 +10,9 @@ Part of the **Fenestra** series, designed in particular for people coming from W
 
 ### Start menu
 
-- **Pinned** apps, with folders, and a **Recommended** section (recent documents and apps).
+- **Pinned** apps with folders, an optional strip of recently launched apps, and compact application-category filters derived from KDE's application catalog.
 - **All apps** in three views: **List**, **Grid** or **Categories** (one tile per category), switchable from the menu.
+- Select **All apps** or a category to filter the browsing list. Applications in several categories appear once in each relevant filter. Search temporarily shows global runner results; clearing the query restores the selected category. In Categories view, selecting a filter shows that category's app list.
 - Menu width adapts to the screen: 6, 7 or 8 columns (below 1900 px, 1900–2499 px, 2500 px and above).
 - **Search** for apps, files, settings and actions, with filters, web search, a built-in calculator (`/calc`) and `Alt+1–9` to launch a result.
 - Optional shell command runner (`> command`) and optional quick actions bar (screenshot, lock, terminal…).
@@ -82,8 +83,7 @@ widget.
 ## Native core (optional)
 
 The widget can load a small Rust module that evaluates the rules previously
-duplicated in QML and JavaScript: command-palette ranking, recommended-document
-ordering, hibernation capability parsing, launch history, new-application
+duplicated in QML and JavaScript: command-palette ranking, hibernation capability parsing, launch history, new-application
 bookkeeping, KDE Connect listings and vCard contacts, and the validated shell
 commands. Layout, animations, Plasma integration and all fallbacks stay in QML.
 
@@ -100,6 +100,11 @@ A package without the module keeps working unchanged; the widget logs one line
 and uses its JavaScript implementations. Settings, package id and Plasma
 integration are identical in both cases. See [docs/native-core.md](docs/native-core.md)
 for the architecture, API, measurements, build/install details and limitations.
+
+Category filtering uses KDE's existing Kicker category model in both native and
+QML-only installations. The former recent-document settings are retired in
+version 1.4.0; existing pinned items, recently launched apps and file search
+remain available.
 
 ## Tests
 

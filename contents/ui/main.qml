@@ -87,19 +87,11 @@ PlasmoidItem {
         appletInterface: kicker
         showAllApps: true
         showRecentApps: true
-        showRecentDocs: Plasmoid.configuration.showRecentDocs
+        showRecentDocs: false
         showPowerSession: false
 
         onShowRecentAppsChanged: {
             Plasmoid.configuration.showRecentApps = showRecentApps;
-        }
-
-        onShowRecentDocsChanged: {
-            Plasmoid.configuration.showRecentDocs = showRecentDocs;
-        }
-
-        onRecentOrderingChanged: {
-            Plasmoid.configuration.recentOrdering = recentOrdering;
         }
 
         Component.onCompleted: {

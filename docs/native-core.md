@@ -48,7 +48,7 @@ and entry points are unchanged.
 | Rust module | Rule | QML caller |
 | --- | --- | --- |
 | `fuzzy` | accent/case-insensitive command-palette ranking (prefix matches first) | `MenuRepresentation.qml` (`filteredCmds`) |
-| `docs` | recommended documents: stable order, six-row page, seven-day window | `MenuRepresentation.qml` (`rebuildDocModels`) |
+| `docs` | legacy recommended-document ranking API retained for binary compatibility; unused by the launcher since 1.4.0 | no current UI caller |
 | `hibernate` | parse `org.freedesktop.login1.Manager.CanHibernate` and decide availability | `HibernateProbe.qml` |
 | `launch` | launch counters: legacy migration, workflow buckets, scores, totals | `MenuRepresentation.qml` (`recordLaunch`, `contextLabel`) |
 | `new_apps` | new-application set arithmetic, seven-day expiry, merge/forget | `MenuRepresentation.qml` |
@@ -96,6 +96,25 @@ engine; it stores nothing, starts no thread, timer or process, and all calls run
 on the GUI thread. The vCard read is the only filesystem access and only happens
 when the SMS panel opens; a missing directory yields an empty list. There is no
 cancellation surface because no call is long-running.
+
+Since 1.4.0 the category filter is QML-side and uses the existing Kicker
+desktop-entry model. The native module is not consulted on category clicks;
+crossing the QString/JSON bridge would add work to this lightweight path.
+On catalog refresh, the widget caches category membership and rebuilds only
+the selected category's rows; opening the menu with unchanged folder and
+launch-history configuration skips their JSON parsing and the complete all-app
+model rebuild. The obsolete recent-document timestamp subprocess no longer
+runs at menu opening. New-application scans run once per minute and never
+overlap. No additional thread or daemon was introduced.
+
+The historical benchmark below describes the prior native-core migration, not
+an end-to-end measurement of the 1.4.0 launcher. Reproduce interaction timing
+in a Plasma 6 Wayland session with QML Profiler: record repeated popup openings,
+first input, category changes, search, launch, and idle intervals on the same
+application catalog before and after the change; report medians and p95 with
+the sample count. An offscreen benchmark cannot measure compositor paint or
+input-to-visible latency. The present archive did not include a Git history or
+a Qt/Plasma runtime, so such before/after measurements remain unverified.
 
 `Core.qml` is the contract with the UI: when `bridge` is `null`, methods that
 would return structured data return `null` and command builders return `""`,
