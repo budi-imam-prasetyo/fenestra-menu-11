@@ -144,3 +144,10 @@ Fenestra Menu 11 is distributed under the **GNU General Public License v3.0 or l
 Files inherited from Menu 11 Next and KDE keep their original GPL-2.0-or-later notices, a license that allows this redistribution under GPL-3.0-or-later.
 
 *Not affiliated with or endorsed by Microsoft. “Windows” is a trademark of Microsoft Corporation and is only used here to describe the style.*
+
+### Menu UI regression check
+
+Run `sh scripts/test-menu.sh` on a Plasma 6 workstation with Qt and Plasma
+development packages. It loads the real applet with isolated settings and checks
+List/Grid button clicks, wheel scrolling over icons, alphabet navigation,
+search typing and clearing. Screenshots are saved under `build/menu-tests/`.

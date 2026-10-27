@@ -458,6 +458,16 @@ PlasmaCore.Dialog {
             return id.startsWith("preferred://") ? "emblem-default" : id.replace(/\.desktop$/, "");
         }
 
+        function setAppsViewMode(mode) {
+            scrollAnim.stop();
+            letterScrollAnim.stop();
+            Plasmoid.configuration.allAppsViewMode = mode;
+            allAppsGrid.contentY = 0;
+            allAppsGrid.currentIndex = -1;
+            buildAllAppsCombo();
+            mainFlick.contentY = 0;
+        }
+
         property bool _needsComboRebuild: false
 
         onAllAppsFoldersDataChanged: {
@@ -530,7 +540,7 @@ PlasmaCore.Dialog {
                     decoration:  sortedAppsModel.data(midx, decorationRole) || "",
                     favoriteId:  favId,
                     description: descRole !== undefined ? (sortedAppsModel.data(midx, descRole) || "") : "",
-                    url:         urlRole  !== undefined ? (sortedAppsModel.data(midx, urlRole)  || "") : "",
+                    url:         urlRole !== undefined ? String(sortedAppsModel.data(midx, urlRole) || "") : "",
                     disabled: false, hasActionList: false,
                     sourceRow: i, folderIdx: -1, indented: false, expanded: false
                 });
@@ -1118,22 +1128,22 @@ PlasmaCore.Dialog {
             saveNewApps();
         }
 
+        Timer {
+            id: appsWatchTimeout
+            interval: 15000
+            onTriggered: {
+                if (appsWatch.currentSource !== "") {
+                    appsWatch.disconnectSource(appsWatch.currentSource);
+                    appsWatch.currentSource = "";
+                }
+            }
+        }
+
         Plasma5Support.DataSource {
             id: appsWatch
             engine: "executable"
             connectedSources: []
             property string currentSource: ""
-
-            Timer {
-                id: appsWatchTimeout
-                interval: 15000
-                onTriggered: {
-                    if (appsWatch.currentSource !== "") {
-                        appsWatch.disconnectSource(appsWatch.currentSource);
-                        appsWatch.currentSource = "";
-                    }
-                }
-            }
 
             function poll() {
                 if (currentSource !== "") return; // never start overlapping scans
@@ -1292,6 +1302,7 @@ PlasmaCore.Dialog {
 
         PC3.TextField {
             id: searchField
+            objectName: "searchField"
             anchors {
                 top: parent.top
                 topMargin: Kirigami.Units.gridUnit - 10
@@ -1628,12 +1639,12 @@ PlasmaCore.Dialog {
                 globalFavoritesGrid.currentIndex = -1;
                     }
 
-            width: rootItem.widthComputed / 0.1
             height: Math.max(Kirigami.Units.gridUnit * 8, Math.min(rootItem.viewWanted, rootItem.height - view.y - footer.height - 0))
 
             // PAGE 1 — page unique : épinglés, recommandations, « Tout »
             Flickable {
                 id: mainFlick
+                objectName: "mainFlick"
                 width: view.width
                 height: view.height
                 contentWidth: mainColumn.width
@@ -1691,6 +1702,7 @@ PlasmaCore.Dialog {
 
                 RowLayout {
                     id: topRow
+                    visible: globalFavoritesGrid.count > 0 || rootItem.pinnedFoldersData.length > 0
                     x: rootItem.sectionInset
                     // + largeSpacing + 5 : compense le padding interne du bouton (comme Catégories)
                     width: parent.width - rootItem.sectionInset * 2 + Kirigami.Units.largeSpacing + 5
@@ -1709,6 +1721,7 @@ PlasmaCore.Dialog {
 
                     SectionButton {
                         id: butttonActionAllApps
+                        visible: globalFavoritesGrid.count > root.colonnesAuto * rootItem.pinnedCollapsedRows
                         flat: false
                         iconName: rootItem.pinnedCollapsed ? "go-down" : "go-up"
                         text: rootItem.pinnedCollapsed ? i18n("Show more") : i18n("Show less")
@@ -1719,12 +1732,13 @@ PlasmaCore.Dialog {
 
                 ItemGridView {
                     id: globalFavoritesGrid
+                    objectName: "globalFavoritesGrid"
                     scrollEnabled: false
                     whiteHighlight: true // surlignement blanc 50 %
-                    visible: true
+                    visible: count > 0
                     clip: true   // coupe net les rangées au-delà du repli
                     width: parent.width
-                    height: root.cellSizeHeight * Math.max(1, Math.min(rootItem.pinnedCollapsed ? rootItem.pinnedCollapsedRows : Plasmoid.configuration.numberRows, Math.ceil(count / root.colonnesAuto)))
+                    height: count > 0 ? root.cellSizeHeight * Math.min(rootItem.pinnedCollapsed ? rootItem.pinnedCollapsedRows : Plasmoid.configuration.numberRows, Math.ceil(count / root.colonnesAuto)) : 0
                     itemColumns: 1
                     dragEnabled: true
                     dropEnabled: true
@@ -2002,6 +2016,7 @@ PlasmaCore.Dialog {
                 // Keep only the space occupied by recent apps and category filters.
                 Item {
                     id: categoryControls
+                    objectName: "categoryControls"
                     x: rootItem.sectionInset
                     width: parent.width - rootItem.sectionInset * 2
 
@@ -2117,7 +2132,7 @@ PlasmaCore.Dialog {
                         id: categoryFilters
                         y: categoryControls.recentAppsStripHeight
                         width: parent.width
-                        height: Kirigami.Units.gridUnit * 3
+                        height: Kirigami.Units.gridUnit * 2
                         orientation: ListView.Horizontal
                         spacing: Kirigami.Units.smallSpacing
                         clip: true
@@ -2232,6 +2247,7 @@ PlasmaCore.Dialog {
                 // ── Tout (ex-page « Toutes les applications ») ──────────────
                 RowLayout {
                     id: allAppsHeader
+                    objectName: "allAppsHeader"
                     x: rootItem.sectionInset
                     // en mode Catégories : on suit la largeur réellement occupée par les tuiles
                     // (Math.floor dans CategoryTiles.qml laisse quelques pixels de côté à droite)
@@ -2240,7 +2256,7 @@ PlasmaCore.Dialog {
                               + allAppsCategoryGrid.gap * (allAppsCategoryGrid.columnsCount - 1)
                               + Kirigami.Units.largeSpacing + 5) // compense le padding du bouton + ajustement fin
                            : (parent.width - rootItem.sectionInset * 2)
-                    height: butttonActionAllApps.implicitHeight
+                    implicitHeight: Kirigami.Units.gridUnit * 2
 
                     PlasmaExtras.Heading {
                         color: colorWithAlpha(Kirigami.Theme.textColor, 0.8)
@@ -2251,10 +2267,26 @@ PlasmaCore.Dialog {
 
                     Item { Layout.fillWidth: true }
 
+                    PC3.ToolButton {
+                        objectName: "appsListButton"
+                        text: i18n("List")
+                        icon.name: "view-list-details"
+                        checkable: true
+                        checked: Plasmoid.configuration.allAppsViewMode === 0
+                        onClicked: rootItem.setAppsViewMode(0)
+                    }
+                    PC3.ToolButton {
+                        objectName: "appsGridButton"
+                        text: i18n("Grid")
+                        icon.name: "view-grid"
+                        checkable: true
+                        checked: Plasmoid.configuration.allAppsViewMode === 1
+                        onClicked: rootItem.setAppsViewMode(1)
+                    }
                     SectionButton {
                         id: viewModeButton
                         iconName: "go-down"
-                        text: i18n("View: %1", [i18n("List"), i18n("Grid"), i18n("Categories")][Plasmoid.configuration.allAppsViewMode] || "")
+                        text: i18n("Categories")
                         onClicked: {
                             if (viewModePopup.visible) viewModePopup.visible = false;
                             else viewModePopup.openFor(viewModeButton);
@@ -2283,6 +2315,7 @@ PlasmaCore.Dialog {
 
                     ItemGridView {
                         id: allAppsGrid
+                        objectName: "allAppsGrid"
                         scrollEnabled: false
                         onWheelUnhandled: delta => mainFlick.scrollBy(delta)
                         whiteHighlight: true // surlignement blanc 50 %
@@ -2297,7 +2330,7 @@ PlasmaCore.Dialog {
                         verticalScrollBarPolicy: PC3.ScrollBar.AlwaysOff
                         cellWidth: Plasmoid.configuration.allAppsViewMode === 1
                                    ? Math.floor(width / Math.max(1, root.colonnesAuto))
-                                   : width - Kirigami.Units.gridUnit * 2
+                                   : width
                         cellHeight: Plasmoid.configuration.allAppsViewMode === 1
                                     ? root.cellSizeHeight
                                     : root.iconSize + Kirigami.Units.gridUnit + Kirigami.Units.largeSpacing
@@ -2357,7 +2390,7 @@ PlasmaCore.Dialog {
             // PAGE 3 — Search Results
             Item {
                 id: searchPage
-                width: rootItem.widthComputed
+                width: view.width
                 height: view.height
 
                 function tryActivate(row, col) { runnerGrid.tryActivate(row, col); }
@@ -2714,13 +2747,14 @@ PlasmaCore.Dialog {
                 // ── Results grid ──
                 ItemMultiGridView {
                     id: runnerGrid
+                    objectName: "runnerGrid"
                     anchors.top: filterPillsWrapper.bottom
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: pluginResultsColumn.visible ? pluginResultsColumn.top : parent.bottom
                     visible: !(root.searching && searchField.text.startsWith('/'))
                     itemColumns: 3
-                    cellWidth: rootItem.widthComputed - Kirigami.Units.gridUnit * 2
+                    cellWidth: Math.max(1, availableWidth)
                     cellHeight: root.iconSize + Kirigami.Units.gridUnit + Kirigami.Units.largeSpacing
                     model: runnerModel
                     grabFocus: false
@@ -2868,6 +2902,27 @@ PlasmaCore.Dialog {
 
         }
 
+        // Handle wheel input in viewport coordinates, above app delegates.
+        Item {
+            anchors.fill: view
+            visible: view.currentIndex === 0
+            z: 1
+            WheelHandler {
+                target: null
+                acceptedDevices: PointerDevice.AllDevices
+                onWheel: event => {
+                    var delta = event.pixelDelta.y !== 0 ? event.pixelDelta.y
+                              : event.angleDelta.y / 120 * Kirigami.Units.gridUnit * 3;
+                    if (delta !== 0) {
+                        mainFlick.scrollBy(delta);
+                        event.accepted = true;
+                    } else {
+                        event.accepted = false;
+                    }
+                }
+            }
+        }
+
         // ── Fenêtre « Affichage » de la rubrique Tout (même style que la fenêtre du bouton Alimentation) ──
         // fenêtre système séparée : le menu principal ne doit pas se refermer quand elle prend le focus
         PlasmaCore.Dialog {
@@ -2907,7 +2962,7 @@ PlasmaCore.Dialog {
                 keepMenuOpen = true;
                 visible = false;
                 Qt.callLater(function () {
-                    Plasmoid.configuration.allAppsViewMode = mode;
+                    rootItem.setAppsViewMode(mode);
                     if (mode === 2) root.ensureCategoryModel();
                     else rootItem.buildAllAppsCombo();
                 });
@@ -3188,6 +3243,25 @@ PlasmaCore.Dialog {
             }
         }
 
+        Rectangle {
+            id: alphabetOverlay
+            anchors.centerIn: view
+            width: Kirigami.Units.gridUnit * 4
+            height: width
+            radius: Kirigami.Units.smallSpacing
+            color: Kirigami.Theme.backgroundColor
+            border.color: Kirigami.Theme.highlightColor
+            z: 50
+            opacity: 0
+            visible: opacity > 0
+            property string currentLetter: ""
+            PC3.Label {
+                anchors.centerIn: parent
+                text: alphabetOverlay.currentLetter
+                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2
+            }
+        }
+
         NumberAnimation {
             id: letterScrollAnim
             target: mainFlick
@@ -3205,6 +3279,7 @@ PlasmaCore.Dialog {
 
         Timer {
             id: searchDebounce
+            objectName: "searchDebounce"
             interval: 120
             repeat: false
             onTriggered: {

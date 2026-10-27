@@ -90,10 +90,6 @@ PlasmoidItem {
         showRecentDocs: false
         showPowerSession: false
 
-        onShowRecentAppsChanged: {
-            Plasmoid.configuration.showRecentApps = showRecentApps;
-        }
-
         Component.onCompleted: {
             favoritesModel.initForClient("org.kde.plasma.kicker.favorites.instance-" + Plasmoid.id)
 

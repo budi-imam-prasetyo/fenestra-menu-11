@@ -41,7 +41,8 @@ PlasmaComponents.ScrollView {
     property int cellHeight
 
     function subGridAt(index) {
-        return repeater.itemAt(index).itemGrid;
+        var section = repeater.itemAt(index);
+        return section ? section.itemGrid : null;
     }
 
     function tryActivate(row, col) {
@@ -54,7 +55,7 @@ PlasmaComponents.ScrollView {
 
         for (var i = 0; i < repeater.count; i++) {
             var grid = subGridAt(i);
-            if (grid.count > 0) {
+            if (grid && grid.count > 0 && !repeater.itemAt(i).sectionCollapsed) {
                 if (rows <= row) {
                     target = grid;
                     rows += grid.lastRow() + 2;
@@ -85,6 +86,8 @@ PlasmaComponents.ScrollView {
         height: itemMultiGrid.availableHeight
         clip: true
 
+        boundsBehavior: Flickable.StopAtBounds
+        onContentHeightChanged: contentY = Math.max(0, Math.min(contentY, contentHeight - height))
         flickableDirection: Flickable.VerticalFlick
         contentHeight: itemColumn.implicitHeight
         contentWidth: width
@@ -214,6 +217,12 @@ PlasmaComponents.ScrollView {
 
                         ItemGridView {
                             id: gridView
+                            scrollEnabled: false
+                            onWheelUnhandled: delta => {
+                                flickable.cancelFlick();
+                                flickable.contentY = Math.max(0, Math.min(flickable.contentHeight - flickable.height,
+                                                                        flickable.contentY - delta));
+                            }
                             visible: !itemTest.sectionCollapsed
 
                             Connections {
@@ -327,11 +336,24 @@ PlasmaComponents.ScrollView {
             }
         }
 
-        Kicker.WheelInterceptor {
-            width: flickable.width
-            height: flickable.height
-            z: 1
-            destination: findWheelArea(itemMultiGrid)
+
+    }
+    Item {
+        width: itemMultiGrid.availableWidth
+        height: itemMultiGrid.availableHeight
+        z: 1
+        WheelHandler {
+            target: null
+            acceptedDevices: PointerDevice.AllDevices
+            onWheel: event => {
+                var delta = event.pixelDelta.y !== 0 ? event.pixelDelta.y
+                          : event.angleDelta.y / 120 * Kirigami.Units.gridUnit * 3;
+                flickable.cancelFlick();
+                flickable.contentY = Math.max(0, Math.min(flickable.contentHeight - flickable.height,
+                                                        flickable.contentY - delta));
+                event.accepted = delta !== 0;
+            }
         }
     }
+
 }

@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.20)
+project(fenestra_menu_test LANGUAGES CXX)
+find_package(Qt6 REQUIRED COMPONENTS Quick Widgets Test)
+find_package(Plasma REQUIRED)
+find_package(PlasmaQuick REQUIRED)
+add_executable(check tst_menu.cpp)
+target_link_libraries(check PRIVATE Qt6::Quick Qt6::Widgets Qt6::Test Plasma::Plasma Plasma::PlasmaQuick)
