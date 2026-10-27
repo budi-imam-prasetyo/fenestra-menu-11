@@ -89,7 +89,7 @@ PlasmaCore.Dialog {
     property int cellSizeHeight: iconSize + Kirigami.Units.gridUnit * 2 + (2 * Math.max(highlightItemSvg.margins.top + highlightItemSvg.margins.bottom, highlightItemSvg.margins.left + highlightItemSvg.margins.right))
     property int cellSizeWidth: cellSizeHeight + Kirigami.Units.gridUnit
 
-    property bool searching: (searchField.text != "")
+    property bool searching: searchField.text.trim().length > 0
 
     onSearchingChanged: {
         if (searching) {
@@ -377,7 +377,7 @@ PlasmaCore.Dialog {
         // hauteur souhaitée de la page qui défile (la hauteur réelle s'adapte à la place disponible)
         readonly property real viewWanted: Kirigami.Units.gridUnit * 38
 
-        height: view.y + rootItem.viewWanted + footer.height + 0   // hauteur demandée : haut de la page + page souhaitée + pied (+ 0 px)
+        height: Math.min(view.y + rootItem.viewWanted + footer.height, Math.max(200, kicker.availableScreenRect.height - Kirigami.Units.largeSpacing * 2))   // hauteur demandée : haut de la page + page souhaitée + pied (+ 0 px)
 
         Layout.minimumWidth: largeurVoulue
         Layout.maximumWidth: largeurVoulue
@@ -1316,7 +1316,12 @@ PlasmaCore.Dialog {
             }
 
             onTextChanged: {
-                if (text.startsWith('>') && Plasmoid.configuration.enableShellRunner) {
+                rootItem.pluginResults = [];
+                runnerGrid.flickableItem.contentY = 0;
+                if (text.trim().length === 0) {
+                    searchDebounce.stop();
+                    runnerModel.query = "";
+                } else if (text.startsWith('>') && Plasmoid.configuration.enableShellRunner) {
                     searchDebounce.stop();
                     runnerModel.query = "";
                 } else if (text.startsWith('/')) {
@@ -1351,18 +1356,8 @@ PlasmaCore.Dialog {
                 // Forward Up/Down keys directly to runnerGrid when on search page
                 if (view.currentIndex === 1 && (event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
                     event.accepted = true;
-                    runnerGrid.focus = true;
-
                     if (event.key === Qt.Key_Down) {
-                        if (!runnerGrid.focus || runnerGrid.currentIndex === -1) {
-                            runnerGrid.tryActivate(0, 0);
-                        } else {
-                            var currentGrid = runnerGrid.subGridAt(0);
-                            if (currentGrid) {
-                                currentGrid.forceActiveFocus();
-                                currentGrid.keyNavDown();
-                            }
-                        }
+                        runnerGrid.tryActivate(0, 0);
                     } else if (event.key === Qt.Key_Up) {
                         var lastGridIndex = runnerGrid.count - 1;
                         if (lastGridIndex >= 0) {
@@ -1428,7 +1423,7 @@ PlasmaCore.Dialog {
                         if (grid && grid.count > 0) {
                             grid.currentIndex = 0;
                             grid.focus = true;
-                            grid.itemActivated(0, "", null);
+
                        
                             if ("trigger" in grid.model) {
                                 //console.log("Calling grid.model.trigger(0)");
@@ -1657,6 +1652,14 @@ PlasmaCore.Dialog {
                         allAppsGrid.tryActivate(0, 0);
                 }
 
+                function scrollBy(delta) {
+                    scrollAnim.stop();
+                    letterScrollAnim.stop();
+                    contentY = Math.max(0, Math.min(contentHeight - height, contentY - delta));
+                }
+
+                onContentHeightChanged: contentY = Math.max(0, Math.min(contentY, contentHeight - height))
+
                 function scrollTo(y) {
                     var maxY = Math.max(0, contentHeight - height);
                     scrollAnim.stop();
@@ -1684,7 +1687,7 @@ PlasmaCore.Dialog {
                 Column {
                 id: mainColumn
                 width: rootItem.width - rootItem.margeCote * 2
-                spacing: Kirigami.Units.largeSpacing * 2
+                spacing: Kirigami.Units.largeSpacing
 
                 RowLayout {
                     id: topRow
@@ -1716,6 +1719,7 @@ PlasmaCore.Dialog {
 
                 ItemGridView {
                     id: globalFavoritesGrid
+                    scrollEnabled: false
                     whiteHighlight: true // surlignement blanc 50 %
                     visible: true
                     clip: true   // coupe net les rangées au-delà du repli
@@ -1728,10 +1732,7 @@ PlasmaCore.Dialog {
                     cellHeight: root.cellSizeHeight
                     iconSize: root.iconSize
                     labels2lines: Plasmoid.configuration.labels2lines
-                    onWheelUnhandled: (delta) => {
-                        var maxY = Math.max(0, mainFlick.contentHeight - mainFlick.height);
-                        mainFlick.contentY = Math.max(0, Math.min(maxY, mainFlick.contentY - delta));
-                    }
+                    onWheelUnhandled: delta => mainFlick.scrollBy(delta)
                     onKeyNavUp: {
                         if (rootItem.pinnedCurrentPage > 0) {
                             rootItem.pinnedCurrentPage--;
@@ -1794,9 +1795,9 @@ PlasmaCore.Dialog {
 
                 // Page indicator dots for pinned apps pagination
                 Item {
-                    visible: !rootItem.pinnedCollapsed
+                    visible: !rootItem.pinnedCollapsed && rootItem.pinnedTotalPages > 1
                     width: parent.width
-                    height: Kirigami.Units.gridUnit
+                    height: visible ? Kirigami.Units.gridUnit : 0
 
                     Row {
                         anchors.centerIn: parent
@@ -1998,9 +1999,9 @@ PlasmaCore.Dialog {
                     }
                 }
 
-                // Fixed-height container so the menu never resizes when docs/recent-apps are toggled
+                // Keep only the space occupied by recent apps and category filters.
                 Item {
-                    id: docsContainer
+                    id: categoryControls
                     x: rootItem.sectionInset
                     width: parent.width - rootItem.sectionInset * 2
 
@@ -2008,13 +2009,13 @@ PlasmaCore.Dialog {
                         ? Kirigami.Units.iconSizes.medium + Kirigami.Units.largeSpacing * 3
                         : 0
 
-                    height: recentAppsStripHeight + Kirigami.Units.gridUnit * 3 + Kirigami.Units.largeSpacing
+                    height: recentAppsStripHeight + categoryFilters.height
 
                     // Recently opened apps — horizontal icon strip
                     Item {
                         id: recentAppsStrip
                         width: parent.width
-                        height: docsContainer.recentAppsStripHeight
+                        height: categoryControls.recentAppsStripHeight
                         visible: Plasmoid.configuration.showRecentApps
 
                         // Smart context header
@@ -2114,7 +2115,7 @@ PlasmaCore.Dialog {
                     // The list model and category membership are refreshed only when Kicker refreshes.
                     ListView {
                         id: categoryFilters
-                        y: docsContainer.recentAppsStripHeight + Kirigami.Units.smallSpacing
+                        y: categoryControls.recentAppsStripHeight
                         width: parent.width
                         height: Kirigami.Units.gridUnit * 3
                         orientation: ListView.Horizontal
@@ -2280,22 +2281,10 @@ PlasmaCore.Dialog {
                         color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.65)
                     }
 
-                    // la molette doit faire défiler la page, pas la grille (qui capte les événements)
-                    MouseArea {
-                        anchors.fill: parent
-                        z: 10
-                        acceptedButtons: Qt.NoButton
-                        onWheel: wheel => {
-                            var d = wheel.pixelDelta.y !== 0 ? wheel.pixelDelta.y : wheel.angleDelta.y / 2;
-                            var maxY = Math.max(0, mainFlick.contentHeight - mainFlick.height);
-                            scrollAnim.stop();
-                            mainFlick.contentY = Math.max(0, Math.min(maxY, mainFlick.contentY - d));
-                            wheel.accepted = true;
-                        }
-                    }
-
                     ItemGridView {
                         id: allAppsGrid
+                        scrollEnabled: false
+                        onWheelUnhandled: delta => mainFlick.scrollBy(delta)
                         whiteHighlight: true // surlignement blanc 50 %
                         width: parent.width
                         readonly property int columnsCount: cellWidth > 0 ? Math.max(1, Math.floor(width / cellWidth)) : 1
@@ -2343,29 +2332,6 @@ PlasmaCore.Dialog {
 
                 Item { width: 1; height: Kirigami.Units.largeSpacing }
                 } // fin mainColumn
-
-                // --- MASQUE MOLETTE : intercepte la molette au-dessus d'Épinglé + Recommandations
-                // avant que gridView (en dessous) ne l'absorbe nativement. Aucune MouseArea ici :
-                // clics, survol et glisser-déposer des icônes passent normalement au travers.
-                Item {
-                    id: wheelMask
-                    x: 0
-                    y: 0
-                    width: mainColumn.width
-                    height: docsContainer.y + docsContainer.height
-                    z: 999
-
-                    WheelHandler {
-                        target: null
-                        acceptedDevices: PointerDevice.AllDevices
-                        onWheel: event => {
-                            event.accepted = true;
-                            var maxY = Math.max(0, mainFlick.contentHeight - mainFlick.height);
-                            var pixels = (event.angleDelta.y / 120) * Kirigami.Units.gridUnit * 3;
-                            mainFlick.contentY = Math.max(0, Math.min(maxY, mainFlick.contentY - pixels));
-                        }
-                    }
-                }
 
                 // garde la ligne sélectionnée au clavier visible dans la page qui défile
                 Connections {
@@ -2751,14 +2717,14 @@ PlasmaCore.Dialog {
                     anchors.top: filterPillsWrapper.bottom
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    anchors.bottom: parent.bottom
+                    anchors.bottom: pluginResultsColumn.visible ? pluginResultsColumn.top : parent.bottom
                     visible: !(root.searching && searchField.text.startsWith('/'))
                     itemColumns: 3
                     cellWidth: rootItem.widthComputed - Kirigami.Units.gridUnit * 2
                     cellHeight: root.iconSize + Kirigami.Units.gridUnit + Kirigami.Units.largeSpacing
                     model: runnerModel
-                    grabFocus: true
-                    focus: view.currentIndex === 1
+                    grabFocus: false
+                    focus: false
                     onKeyNavUp: {
                         runnerGrid.focus = false;
                         searchField.focus = true;
@@ -3224,7 +3190,7 @@ PlasmaCore.Dialog {
 
         NumberAnimation {
             id: letterScrollAnim
-            target: allAppsGrid
+            target: mainFlick
             property: "contentY"
             duration: 220
             easing.type: Easing.OutCubic
@@ -4429,8 +4395,8 @@ PlasmaCore.Dialog {
         if (targetIndex < 0) return;
 
         var columns = Math.max(1, Math.floor(allAppsGrid.width / allAppsGrid.cellWidth));
-        var targetY = Math.floor(targetIndex / columns) * allAppsGrid.cellHeight;
-        var maxY = Math.max(0, allAppsGrid.contentHeight - allAppsGrid.height);
+        var targetY = allAppsGridContainer.y + Math.floor(targetIndex / columns) * allAppsGrid.cellHeight;
+        var maxY = Math.max(0, mainFlick.contentHeight - mainFlick.height);
         targetY = Math.min(targetY, maxY);
 
         allAppsGrid.currentIndex = -1;

@@ -31,6 +31,7 @@ FocusScope {
     signal folderEditRequested(int index)
 
     property bool _folderEditPressed: false
+    property bool scrollEnabled: true
     property bool dragEnabled: true
     property bool dropEnabled: false
     property bool showLabels: true
@@ -312,6 +313,7 @@ FocusScope {
                     }
                 }
 
+                interactive: itemGrid.scrollEnabled
                 keyNavigationWraps: false
                 boundsBehavior: Flickable.StopAtBounds
 
@@ -324,9 +326,10 @@ FocusScope {
                     onWheel: event => {
                         event.accepted = true;
                         var maxY = Math.max(0, gridView.contentHeight - gridView.height);
-                        var pixels = (event.angleDelta.y / 120) * Kirigami.Units.gridUnit * 3;
+                        var pixels = event.pixelDelta.y !== 0 ? event.pixelDelta.y
+                                     : (event.angleDelta.y / 120) * Kirigami.Units.gridUnit * 3;
                         var versLeHaut = pixels > 0;
-                        if (maxY <= 0
+                        if (!itemGrid.scrollEnabled || maxY <= 0
                             || (versLeHaut && gridView.contentY <= 0)
                             || (!versLeHaut && gridView.contentY >= maxY)) {
                             itemGrid.wheelUnhandled(pixels);
