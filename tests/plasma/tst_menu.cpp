@@ -129,6 +129,8 @@ int main(int argc, char **argv) {
  qInfo() << "METRICS" << eval("JSON.stringify({count: allAppsGrid.count, width: allAppsGrid.width, cell: allAppsGrid.cellWidth, height: mainFlick.height, content: mainFlick.contentHeight, pinnedBottom: globalFavoritesGrid.y + globalFavoritesGrid.height, appsTop: allAppsHeader.y, controls: categoryControls.height})");
  check("core facade reaches popup", "root.core !== null");
  check("catalog populated", "allAppsGrid.count > 0");
+ check("category list is vertical beside apps", "categoryFilters.orientation === ListView.Vertical && categoryFilters.width <= mainFlick.x && categoryFilters.height > Design.controlHeight");
+ check("navigation uses bundled icons", "Design.iconSource('view-list-details').indexOf('/icons/navigation/list.svg') >= 0 && Design.iconSource('applications-internet-symbolic').indexOf('/icons/navigation/internet.svg') >= 0 && Design.iconSource('unknown-category') === 'unknown-category'");
  check("list fits viewport", "allAppsGrid.cellWidth <= allAppsGrid.width");
  check("recent files disabled", "rootModel.showRecentDocs === false");
  check("recent app preference preserved", "Plasmoid.configuration.showRecentApps === false");
@@ -157,7 +159,7 @@ int main(int argc, char **argv) {
                    Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
  QCoreApplication::sendEvent(popupWindow, &wheel);
  QTest::qWait(100);
- check("page scroll moves", "mainFlick.contentY > 0");
+ check("wheel scrolls three list rows", "Math.abs(mainFlick.contentY - Design.wheelStep) < 1");
  check("visible rows track outer scroll", "Math.abs(allAppsGrid.contentY - allAppsGrid.viewportOffset) < 1");
  eval("root.scrollToLetter('S')"); QTest::qWait(260);
  if (popupWindow) popupWindow->grabWindow().save(output + "/scrolled-grid.png");
@@ -166,6 +168,29 @@ int main(int argc, char **argv) {
  clickButton("appsListButton");
  qInfo() << "AFTER_LIST_CLICK" << eval("JSON.stringify({mode:Plasmoid.configuration.allAppsViewMode,cols:allAppsGrid.columnsCount,scroll:mainFlick.contentY,width:allAppsGrid.width,cell:allAppsGrid.cellWidth})");
  check("list selected", "Plasmoid.configuration.allAppsViewMode === 0 && allAppsGrid.columnsCount === 1");
+ auto sendWheelAt = [&](QPointF position, QPoint pixels, QPoint angle) {
+   QWheelEvent event(position, popupWindow->mapToGlobal(position.toPoint()), pixels, angle,
+                     Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+   QCoreApplication::sendEvent(popupWindow, &event);
+   QTest::qWait(50);
+ };
+ const auto fixedPositions = eval("JSON.stringify([globalFavoritesGrid.mapToItem(rootItem,0,0).y, categoryFilters.mapToItem(rootItem,0,0).y])").toString();
+ sendWheelAt(gridItem->mapToScene(QPointF(40,30)), QPoint(), QPoint(0,-120));
+ check("list wheel scrolls apps", "mainFlick.contentY >= Design.wheelStep");
+ check("pinned and category positions stay fixed", eval("JSON.stringify([globalFavoritesGrid.mapToItem(rootItem,0,0).y, categoryFilters.mapToItem(rootItem,0,0).y])").toString() == fixedPositions ? "true" : "false");
+ eval("categoryFilters.model = rootItem.availableCategories.concat(Array.from({length:25}, function(_,i){return {row:100+i,label:'Extra category '+i,icon:'applications-other'};})); categoryFilters.contentY = 0;");
+ QTest::qWait(100);
+ check("category rows keep normal spacing", "categoryFilters.contentHeight > categoryFilters.height && categoryFilters.itemAtIndex(0).height === Design.controlHeight && categoryFilters.spacing > 0");
+ const double appsOffset = eval("mainFlick.contentY").toDouble();
+ sendWheelAt(eval("categoryFilters.mapToItem(null,30,30)").toPointF(), QPoint(), QPoint(0,-120));
+ check("category wheel scrolls its own list", "categoryFilters.contentY > 0");
+ const double categoryOffset = eval("categoryFilters.contentY").toDouble();
+ sendWheelAt(eval("topRow.mapToItem(null,30,10)").toPointF(), QPoint(), QPoint(0,-120));
+ check("wheel outside apps does not scroll", std::abs(eval("mainFlick.contentY").toDouble()-appsOffset)<1 ? "true" : "false");
+ sendWheelAt(eval("mainFlick.mapToItem(null,40,30)").toPointF(), QPoint(0,-24), QPoint());
+ check("touchpad scrolls only apps by pixel delta", std::abs(eval("mainFlick.contentY").toDouble()-appsOffset-24)<1 ? "true" : "false");
+ check("apps scroll leaves category offset unchanged", std::abs(eval("categoryFilters.contentY").toDouble()-categoryOffset)<1 ? "true" : "false");
+ eval("categoryFilters.contentY = 0; categoryFilters.model = Qt.binding(function(){return rootItem.availableCategories;}); mainFlick.contentY = 0;");
  check("list virtualizes delegates", "allAppsGrid.renderedItemCount < allAppsGrid.count");
  auto listModel = eval("allAppsListModel").value<QObject*>();
  QSignalSpy resets(listModel, SIGNAL(modelReset()));
@@ -180,23 +205,13 @@ int main(int argc, char **argv) {
  }
  qInfo() << "SLOWEST_LIST_GRID_SWITCH_MS" << slowestSwitch;
  check("switch keeps catalog cache", resets.count() == 0 && removals.count() == 0 ? "true" : "false");
- clickButton("appsCategoriesButton");
- check("categories selected", "Plasmoid.configuration.allAppsViewMode === 2 && allAppsCategoryGrid.visible");
- QTest::qWait(100);
- if (popupWindow) popupWindow->grabWindow().save(output + "/categories.png");
- clickButton("appsListButton");
- clickButton("categoryDropdownButton");
- check("category dropdown opens", "viewModePopup.visible");
- check("category dropdown stays inside launcher", "viewModePopup.x >= 0 && viewModePopup.y >= 0 && viewModePopup.y + viewModePopup.height <= rootItem.height && viewModePopup.x + viewModePopup.width <= rootItem.width");
- if (popupWindow) popupWindow->grabWindow().save(output + "/dropdown.png");
+ check("only list and grid selectors remain", "viewButtons.count === 2 && categoryControls.height === 0");
+ check("removed category controls are absent", !findVisual(popupWindow->contentItem(), "appsCategoriesButton") && !findVisual(popupWindow->contentItem(), "categoryDropdownButton") ? "true" : "false");
+ eval("rootItem.lastNavKeyTime = Date.now(); categoryFilters.currentIndex = 0; categoryFilters.currentItem.forceActiveFocus();");
  QTest::keyClick(popupWindow, Qt::Key_Down);
  QTest::keyClick(popupWindow, Qt::Key_Return);
- check("dropdown keyboard selects category", "rootItem.activeCategoryRow === rootItem.availableCategories[1].row && !viewModePopup.visible");
- check("dropdown restores trigger focus", "categoryDropButton.activeFocus");
+ check("sidebar keyboard selects category", "rootItem.activeCategoryRow === rootItem.availableCategories[1].row");
  eval("rootItem.selectCategory(-1)");
- clickButton("categoryDropdownButton");
- QTest::keyClick(popupWindow, Qt::Key_Escape);
- check("dropdown Escape dismisses", "!viewModePopup.visible && root.visible");
  eval("rootItem.selectCategory(rootItem.availableCategories[1].row)");
  check("category caches rows", "rootItem.categoryRowsCache[rootItem.activeCategoryRow] !== undefined");
  eval("rootItem.selectCategory(-1)");
@@ -255,6 +270,44 @@ int main(int argc, char **argv) {
  eval("globalFavoritesGrid.model = Qt.createQmlObject(" + encoded.mid(1, encoded.size()-2) + ", rootItem); globalFavoritesGrid.model.addFavorite('long-fixture.desktop'); globalFavoritesGrid.model.addFavorite('second-fixture.desktop');");
  QTest::qWait(100);
  check("pinned favorites add", "globalFavoritesGrid.count === 2");
+ eval("for(var k=0;k<5;k++) globalFavoritesGrid.model.addFavorite('extra-'+k+'.desktop'); rootItem.newApps = {'long-fixture.desktop':{t:Date.now()}};");
+ QTest::qWait(100);
+ check("pinned has six apps per row", "Math.abs(globalFavoritesGrid.width / globalFavoritesGrid.cellWidth - 6) < 0.01 && globalFavoritesGrid.height === globalFavoritesGrid.cellHeight * 2");
+ eval("globalFavoritesGrid.currentIndex = 0");
+ QTest::qWait(50);
+ check("new pinned app shows dot", "globalFavoritesGrid.currentItem.isNewTag");
+ auto appDot = findVisual(popupWindow->contentItem(), "applicationNewDot_long-fixture.desktop");
+ check("new app dot visible", appDot && appDot->isVisible() ? "true" : "false");
+ const double pinnedOffset = eval("mainFlick.contentY").toDouble();
+ sendWheelAt(eval("globalFavoritesGrid.mapToItem(null,30,30)").toPointF(), QPoint(), QPoint(0,-120));
+ check("pinned wheel does not scroll apps", std::abs(eval("mainFlick.contentY").toDouble()-pinnedOffset)<1 ? "true" : "false");
+ if (popupWindow) popupWindow->grabWindow().save(output + "/pinned-six.png");
+ const int savedColumns = eval("Plasmoid.configuration.numberColumns").toInt();
+ double narrowMenuWidth = 0;
+ for (int columns : {3,5,8,15}) {
+   eval(QString("Plasmoid.configuration.numberColumns = %1; globalFavoritesGrid.currentIndex = -1;").arg(columns));
+   QTest::qWait(100);
+   check(QString("configured pinned columns %1").arg(columns), QString("rootItem.pinnedColumns === %1 && Math.abs(globalFavoritesGrid.width/globalFavoritesGrid.cellWidth-%1)<0.01 && rootItem.pinnedItemsPerPage === %1 * Plasmoid.configuration.numberRows").arg(columns));
+   check("menu width remains inside screen", "root.width <= kicker.availableScreenRect.width && rootItem.width === rootItem.largeurVoulue && Math.abs(root.width-rootItem.width-root.margins.left-root.margins.right)<2");
+   if (columns == 3) {
+     narrowMenuWidth = eval("rootItem.width").toDouble();
+     eval("globalFavoritesGrid.currentIndex = 3");
+     QTest::qWait(20);
+     check("three columns wrap fourth app to second row", "globalFavoritesGrid.currentItem.y === globalFavoritesGrid.cellHeight");
+   }
+   if (columns == 8) {
+     check("menu grows with configured columns", eval("rootItem.width").toDouble() > narrowMenuWidth ? "true" : "false");
+     eval("globalFavoritesGrid.currentIndex = 6");
+     QTest::qWait(20);
+     check("eight columns keep seventh app in first row", "globalFavoritesGrid.currentItem.y === 0");
+     if (popupWindow) popupWindow->grabWindow().save(output + "/pinned-eight.png");
+   }
+ }
+ eval(QString("Plasmoid.configuration.numberColumns = %1; globalFavoritesGrid.currentIndex = 0;").arg(savedColumns));
+ QTest::qWait(100);
+
+ eval("rootItem.forgetNewApp('long-fixture.desktop'); for(var k=0;k<5;k++) globalFavoritesGrid.model.removeFavorite('extra-'+k+'.desktop');");
+ check("launch acknowledgement clears app dot", "!globalFavoritesGrid.currentItem.isNewTag");
  eval("globalFavoritesGrid.model.moveRow(0,1)");
  check("pinned reorder", "globalFavoritesGrid.model.get(0).favoriteId === 'second-fixture.desktop'");
  eval("globalFavoritesGrid.model.removeFavorite('second-fixture.desktop')");
@@ -292,6 +345,29 @@ int main(int argc, char **argv) {
  eval("rootItem.allAppsFoldersData = []; rootItem.pinnedFoldersData = [{name:'Pinned folder',items:['org.kde.dolphin.desktop']}];");
  check("pinned folder retained", "folderStrip.visible");
  eval("rootItem.pinnedFoldersData = [];");
+ eval("kdeConnectPanel.hold = true; kdeConnectPanel.loaded = true; kdeConnectPanel.devices = [{id:'fixture', name:'Fixture phone', type:'phone', reachable:true, charge:80, charging:false, plugins:[], netType:'', netStrength:-1, mTitle:'',mArtist:'',mPlaying:false,mLength:0,mPos:0,mSeek:false,mVolume:50}]; kdeConnectPanel.notifs = Array.from({length:8}, function(_,i){return {id:String(i),app:'Fixture app',title:'Notification '+i,text:'A notification body with enough text to wrap and occupy several lines in the mobile panel.',reply:'',icon:'',dismissable:i!==7};}); kdeConnectPanel.visible = true;");
+ QTest::qWait(100);
+ auto phonePanel = qobject_cast<QQuickWindow*>(eval("kdeConnectPanel").value<QObject*>());
+ phonePanel->grabWindow();
+ QTest::qWait(50);
+ auto notificationViewport = findVisual(phonePanel->contentItem(), "notificationViewport");
+ auto lastNotification = findVisual(phonePanel->contentItem(), "notification_7");
+ check("all eight notifications rendered", lastNotification && notificationViewport ? "true" : "false");
+ check("notifications have scroll overflow", notificationViewport->property("contentHeight").toDouble() > notificationViewport->height() ? "true" : "false");
+ QPointF phoneWheelPos = notificationViewport->mapToScene(QPointF(40,30));
+ QWheelEvent phoneWheel(phoneWheelPos, phonePanel->mapToGlobal(phoneWheelPos.toPoint()), QPoint(), QPoint(0,-120), Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+ QCoreApplication::sendEvent(phonePanel, &phoneWheel);
+ QTest::qWait(50);
+ check("notification wheel scrolls", notificationViewport->property("contentY").toDouble() > 0 ? "true" : "false");
+ notificationViewport->setProperty("contentY", notificationViewport->property("contentHeight").toDouble()-notificationViewport->height());
+ QTest::qWait(50);
+ const auto lastPosition = lastNotification->mapToItem(notificationViewport, QPointF());
+ check("last notification reachable", lastPosition.y()>=0 && lastPosition.y()<notificationViewport->height() ? "true" : "false");
+ auto topFade = findVisual(phonePanel->contentItem(), "scrollFadeTop");
+ auto bottomFade = findVisual(phonePanel->contentItem(), "scrollFadeBottom");
+ check("notification fades follow scroll position", topFade && topFade->isVisible() && bottomFade && !bottomFade->isVisible() ? "true" : "false");
+ if (phonePanel) phonePanel->grabWindow().save(output + "/notifications.png");
+ eval("kdeConnectPanel.visible = false; kdeConnectPanel.hold = false;");
  popup->setProperty("visible", false);
  check("closed launcher has no app scan timer", "!appsWatchTimer.running");
  qInfo() << "FAILURES" << failures;

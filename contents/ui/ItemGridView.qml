@@ -358,7 +358,7 @@ FocusScope {
                         event.accepted = true;
                         var maxY = Math.max(0, gridView.contentHeight - gridView.height);
                         var pixels = event.pixelDelta.y !== 0 ? event.pixelDelta.y
-                                     : (event.angleDelta.y / 120) * Kirigami.Units.gridUnit * 3;
+                                     : (event.angleDelta.y / 120) * Design.wheelStep;
                         var versLeHaut = pixels > 0;
                         if (!itemGrid.scrollEnabled || maxY <= 0
                             || (versLeHaut && gridView.contentY <= 0)

@@ -11,9 +11,10 @@ Part of the **Fenestra** series, designed in particular for people coming from W
 ### Start menu
 
 - **Pinned** apps with folders, an optional strip of recently launched apps, and compact application-category filters derived from KDE's application catalog.
-- **All apps** in three views: **List**, **Grid** or **Categories**, with one view selector, an accessible category dropdown and retained List/Grid viewports.
-- Select **All apps** or a category to filter the browsing list. Applications in several categories appear once in each relevant filter. Search temporarily shows global runner results; clearing the query restores the selected category. In Categories view, selecting a filter shows that category's app list.
-- Content-driven columns adapt to launcher width, icon size and KDE scaling, with compact controls on narrow screens.
+- **All apps** in **List** or **Grid** view, with a vertical category sidebar and retained viewports.
+- Select **All apps** or a category to filter the browsing list. Applications in several categories appear once in each relevant filter. Search temporarily shows global runner results; clearing the query restores the selected category.
+- Configure pinned app columns and rows in the widget settings. Menu width adapts to the column count, icon size and KDE font scaling, within the available screen space.
+- Categories and apps scroll independently while pinned apps stay in place.
 - **Search** for apps and settings, with filters, web search, a built-in calculator (`/calc`) and `Alt+1–9` to launch a result.
 - Optional shell command runner (`> command`) and optional quick actions bar (screenshot, lock, terminal…).
 - Footer with your **account** (avatar, name, manage account, other users) and a **power** menu (lock, sleep, hibernate, shut down, restart, sign out). Hibernate appears only when the running system reports that hibernation is available.
@@ -26,7 +27,7 @@ Part of the **Fenestra** series, designed in particular for people coming from W
 - Phone status: name, connection, **battery** (with charging indicator), mobile network.
 - Actions: **Ring**, **Send files**, **Browse**, **Clipboard**, **Send a link**, **Take a photo** (if the phone supports it), **SMS** (with your phone contacts), **Ping**, **Settings**.
 - **Media card** when music plays on the phone: title, artist, previous / play-pause / next, volume, progress.
-- **Recent notifications**, with reply and dismiss.
+- **All mirrored notifications** in a scrollable list with edge fades, reply and dismiss.
 - Step-by-step **pairing guide** for Android and iPhone.
 
 ## Requirements

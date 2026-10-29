@@ -140,6 +140,7 @@ PlasmaCore.Dialog {
     }
 
     function reset() {
+        if (Plasmoid.configuration.allAppsViewMode === 2) Plasmoid.configuration.allAppsViewMode = 0;
         searchDebounce.stop();
         rootItem.pluginResults = [];
         searchField.text = "";
@@ -155,7 +156,6 @@ PlasmaCore.Dialog {
         folderRenameOverlay.visible = false;
         allAppsFolderPopup.visible = false;
         createAllAppsFolderOverlay.visible = false;
-        viewModePopup.visible = false;
         categoryFlyout.visible = false;
     }
 
@@ -278,10 +278,13 @@ PlasmaCore.Dialog {
         Timer { id: apparitionVolet; interval: 0; onTriggered: if (root.visible && !kdeConnectPanel.visible) kdeConnectPanel.toggle() }
 
 
-        property int widthComputed: root.cellSizeWidth * root.colonnesAuto + Kirigami.Units.gridUnit * 2
-
         property int pinnedCurrentPage: 0
-        property int pinnedItemsPerPage: root.colonnesAuto * Plasmoid.configuration.numberRows
+        readonly property int pinnedColumns: Math.max(3, Math.min(15, Plasmoid.configuration.numberColumns))
+        property int pinnedItemsPerPage: pinnedColumns * Math.max(1, Plasmoid.configuration.numberRows)
+        onPinnedItemsPerPageChanged: Qt.callLater(function () {
+            globalFavoritesGrid.forceLayout();
+            globalFavoritesGrid.positionAtIndex(pinnedCurrentPage * pinnedItemsPerPage);
+        })
         property bool ctrlHeld: false
         property bool pinnedCollapsed: false
         property int pinnedCollapsedRows: 2   // rangées visibles quand replié (façon Windows 11)
@@ -309,12 +312,17 @@ PlasmaCore.Dialog {
             }
         }
 
-        // Fenestra : largeur stable : 733 px de contenu pour 7 colonnes (+ 12 px de cadre = 745 px), en proportion sinon
-        // Fenestra : marges latérales réduites : 8 px de marge de chaque côté (18 à l'origine)
         readonly property int margeCote: Design.space5
-        // contenu : 697 px d'icônes pour 7 colonnes + 2 marges = 713 px (+ 12 px de cadre = 725 px de fenêtre)
-        readonly property int largeurVoulue: Math.min(kicker.screenGeometry.width >= 1900 ? 780 : 680, Math.max(320, kicker.availableScreenRect.width - Design.space5 * 2))
+        // Keep tiles readable as columns, icon size, font size, or screen space change.
+        readonly property real pinnedTileWidth: Math.max(96, root.iconSize + Design.space5 * 3, Design.fontPixels * 7)
+        readonly property real availableMenuWidth: Math.max(1, kicker.availableScreenRect.width
+                                                          - Design.space5 * 2 - root.margins.left - root.margins.right)
+        readonly property int largeurVoulue: Math.floor(Math.min(availableMenuWidth,
+            Math.max(480, pinnedColumns * pinnedTileWidth + margeCote * 2)))
         width: largeurVoulue
+        onLargeurVoulueChanged: Qt.callLater(function () {
+            root.width = Math.round(largeurVoulue + root.margins.left + root.margins.right);
+        })
         // hauteur souhaitée de la page qui défile (la hauteur réelle s'adapte à la place disponible)
         readonly property real viewWanted: Kirigami.Units.gridUnit * 34
 
@@ -401,6 +409,7 @@ PlasmaCore.Dialog {
 
         property var viewScrollOffsets: ({})
         function setAppsViewMode(mode) {
+            if (mode !== 0 && mode !== 1) mode = 0;
             var previous = Plasmoid.configuration.allAppsViewMode;
             if (previous === mode) return;
             scrollAnim.stop();
@@ -1307,7 +1316,7 @@ PlasmaCore.Dialog {
                 }
             }
             allAppsGrid.currentIndex = -1;
-            mainFlick.contentY = Math.min(mainFlick.contentY, allAppsHeader.y);
+            mainFlick.contentY = 0;
             rebuildSelectedCategory();
         }
 
@@ -1359,8 +1368,6 @@ PlasmaCore.Dialog {
                     event.accepted = true;
                     if (categoryFlyout.visible) {
                         categoryFlyout.close();
-                    } else if (viewModePopup.visible) {
-                        viewModePopup.visible = false;
                     } else if (root.searching) {
                         searchField.clear();
                     } else {
@@ -1580,7 +1587,7 @@ PlasmaCore.Dialog {
 
         StackLayout {
             id: view
-            readonly property Item currentItem: currentIndex === 0 ? mainFlick : searchPage
+            readonly property Item currentItem: currentIndex === 0 ? homePage : searchPage
             currentIndex: 0
             clip: true
 
@@ -1598,64 +1605,18 @@ PlasmaCore.Dialog {
 
             height: Math.max(Kirigami.Units.gridUnit * 8, Math.min(rootItem.viewWanted, rootItem.height - view.y - footer.height - 0))
 
-            // PAGE 1 — page unique : épinglés, recommandations, « Tout »
-            Flickable {
-                id: mainFlick
-                objectName: "mainFlick"
-                contentWidth: mainColumn.width
-                contentHeight: mainColumn.implicitHeight
+            // Fixed home sections; only the application viewport scrolls.
+            Item {
+                id: homePage
                 clip: true
-                boundsBehavior: Flickable.StopAtBounds
-                flickableDirection: Flickable.VerticalFlick
-                onContentYChanged: rootItem.noteScrolling()
-
-                PC3.ScrollBar.vertical: PC3.ScrollBar { id: mainScrollBar }
-
                 function tryActivate(row, col) {
-                    if (!rootItem.pinnedCollapsed)
-                        globalFavoritesGrid.tryActivate(row, col);
-                    else
-                        allAppsGrid.tryActivate(0, 0);
-                }
-
-                function scrollBy(delta) {
-                    cancelFlick();
-                    scrollAnim.stop();
-                    letterScrollAnim.stop();
-                    contentY = Math.max(0, Math.min(contentHeight - height, contentY - delta));
-                }
-
-                onContentHeightChanged: contentY = Math.max(0, Math.min(contentY, contentHeight - height))
-
-                function scrollTo(y) {
-                    cancelFlick();
-                    letterScrollAnim.stop();
-                    var maxY = Math.max(0, contentHeight - height);
-                    scrollAnim.stop();
-                    scrollAnim.to = Math.max(0, Math.min(y, maxY));
-                    scrollAnim.start();
-                }
-
-                function ensureVisible(top, bottom) {
-                    var pad = Kirigami.Units.largeSpacing;
-                    var maxY = Math.max(0, contentHeight - height);
-                    if (top - pad < contentY)
-                        contentY = Math.max(0, top - pad);
-                    else if (bottom + pad > contentY + height)
-                        contentY = Math.min(maxY, bottom + pad - height);
-                }
-
-                NumberAnimation {
-                    id: scrollAnim
-                    target: mainFlick
-                    property: "contentY"
-                    duration: 220
-                    easing.type: Easing.OutCubic
+                    if (!rootItem.pinnedCollapsed) globalFavoritesGrid.tryActivate(row, col);
+                    else allAppsGrid.tryActivate(0, 0);
                 }
 
                 Column {
                 id: mainColumn
-                width: Math.max(0, mainFlick.width - Math.max(Design.space4, mainScrollBar.implicitWidth) - Design.space2)
+                width: homePage.width
                 spacing: Design.space3
 
                 RowLayout {
@@ -1679,7 +1640,7 @@ PlasmaCore.Dialog {
 
                     SectionButton {
                         id: butttonActionAllApps
-                        visible: globalFavoritesGrid.count > root.colonnesAuto * rootItem.pinnedCollapsedRows
+                        visible: globalFavoritesGrid.count > rootItem.pinnedColumns * rootItem.pinnedCollapsedRows
                         flat: false
                         iconName: rootItem.pinnedCollapsed ? "go-down" : "go-up"
                         text: rootItem.pinnedCollapsed ? i18n("Show more") : i18n("Show less")
@@ -1690,21 +1651,21 @@ PlasmaCore.Dialog {
 
                 ItemGridView {
                     id: globalFavoritesGrid
+                    showNewTag: true
                     objectName: "globalFavoritesGrid"
                     scrollEnabled: false
                     whiteHighlight: true // surlignement blanc 50 %
                     visible: count > 0
                     clip: true   // coupe net les rangées au-delà du repli
                     width: parent.width
-                    height: count > 0 ? root.cellSizeHeight * Math.min(rootItem.pinnedCollapsed ? rootItem.pinnedCollapsedRows : Math.max(1, Plasmoid.configuration.numberRows), Math.ceil(count / root.colonnesAuto)) : 0
+                    height: count > 0 ? root.cellSizeHeight * Math.min(rootItem.pinnedCollapsed ? rootItem.pinnedCollapsedRows : Math.max(1, Plasmoid.configuration.numberRows), Math.ceil(count / rootItem.pinnedColumns)) : 0
                     itemColumns: 1
                     dragEnabled: true
                     dropEnabled: true
-                    cellWidth: parent.width / root.colonnesAuto
+                    cellWidth: parent.width / rootItem.pinnedColumns
                     cellHeight: root.cellSizeHeight
                     iconSize: root.iconSize
                     labels2lines: Plasmoid.configuration.labels2lines
-                    onWheelUnhandled: delta => mainFlick.scrollBy(delta)
                     onKeyNavUp: {
                         if (rootItem.pinnedCurrentPage > 0) {
                             rootItem.pinnedCurrentPage--;
@@ -1727,7 +1688,7 @@ PlasmaCore.Dialog {
                     onKeyNavLeft: {
                         if (rootItem.pinnedCurrentPage > 0) {
                             rootItem.pinnedCurrentPage--;
-                            globalFavoritesGrid.tryActivate(0, root.colonnesAuto - 1);
+                            globalFavoritesGrid.tryActivate(0, rootItem.pinnedColumns - 1);
                         }
                     }
                     onKeyNavRight: {
@@ -2058,8 +2019,7 @@ PlasmaCore.Dialog {
                             id: viewButtons
                             model: [
                                 { mode: 0, name: i18n("List"), icon: "view-list-details", key: "appsListButton" },
-                                { mode: 1, name: i18n("Grid"), icon: "view-grid", key: "appsGridButton" },
-                                { mode: 2, name: i18n("Categories"), icon: "view-list-icons", key: "appsCategoriesButton" }
+                                { mode: 1, name: i18n("Grid"), icon: "view-grid", key: "appsGridButton" }
                             ]
                             delegate: LauncherButton {
                                 required property var modelData
@@ -2069,14 +2029,13 @@ PlasmaCore.Dialog {
                                 iconName: modelData.icon
                                 showLabel: rootItem.width >= 600
                                 selected: Plasmoid.configuration.allAppsViewMode === modelData.mode
-                                showNewDot: modelData.mode === 2 && !!rootItem.categoriesWithNewApps[-1]
                                 onClicked: rootItem.setAppsViewMode(modelData.mode)
                                 Keys.onRightPressed: {
-                                    var next = viewButtons.itemAt((index + 1) % 3);
+                                    var next = viewButtons.itemAt((index + 1) % viewButtons.count);
                                     next.forceActiveFocus(); next.clicked();
                                 }
                                 Keys.onLeftPressed: {
-                                    var next = viewButtons.itemAt((index + 2) % 3);
+                                    var next = viewButtons.itemAt((index + viewButtons.count - 1) % viewButtons.count);
                                     next.forceActiveFocus(); next.clicked();
                                 }
                             }
@@ -2084,7 +2043,7 @@ PlasmaCore.Dialog {
                     }
                 }
 
-                // Keep only the space occupied by recent apps and category filters.
+                // Optional recent apps sit above the app browser.
                 Item {
                     id: categoryControls
                     objectName: "categoryControls"
@@ -2095,7 +2054,8 @@ PlasmaCore.Dialog {
                         ? Kirigami.Units.iconSizes.medium + Kirigami.Units.largeSpacing * 3
                         : 0
 
-                    height: recentAppsStripHeight + Design.controlHeight
+                    visible: Plasmoid.configuration.showRecentApps
+                    height: recentAppsStripHeight
 
                     // Recently opened apps — horizontal icon strip
                     Item {
@@ -2197,23 +2157,48 @@ PlasmaCore.Dialog {
                         }
                     }
 
+
+                }
+
+                Item {
+                    id: appsBrowser
+                    width: parent.width
+                    readonly property real sidebarWidth: Math.min(180, width * 0.30)
+                    readonly property real appsX: sidebarWidth + Design.space3
+                    height: Math.max(0, homePage.height - y)
+                    clip: true
                     // Categories come from Kicker's desktop-entry-aware application tree.
                     // The list model and category membership are refreshed only when Kicker refreshes.
                     ListView {
                         id: categoryFilters
-                        y: categoryControls.recentAppsStripHeight
-                        width: parent.width - categoryDropButton.width - Design.space3
-                        height: Design.controlHeight
-                        orientation: ListView.Horizontal
-                        spacing: Kirigami.Units.smallSpacing
+                        y: 0
+                        width: appsBrowser.sidebarWidth
+                        height: parent.height
+                        interactive: true
+                        orientation: ListView.Vertical
+                        spacing: Design.space1
                         clip: true
                         boundsBehavior: Flickable.StopAtBounds
                         model: rootItem.availableCategories
+                        PC3.ScrollBar.vertical: PC3.ScrollBar { id: categoryScrollBar }
+                        WheelHandler {
+                            target: null
+                            acceptedDevices: PointerDevice.AllDevices
+                            onWheel: event => {
+                                var delta = event.pixelDelta.y !== 0 ? event.pixelDelta.y
+                                          : event.angleDelta.y / 120 * (Design.controlHeight + Design.space1) * 3;
+                                categoryFilters.cancelFlick();
+                                categoryFilters.contentY = Math.max(0, Math.min(
+                                    Math.max(0, categoryFilters.contentHeight - categoryFilters.height),
+                                    categoryFilters.contentY - delta));
+                                event.accepted = true;
+                            }
+                        }
                         delegate: LauncherButton {
                             id: chip
                             required property var modelData
                             required property int index
-                            width: Math.min(220, implicitWidth)
+                            width: categoryFilters.width - Math.max(Design.space3, categoryScrollBar.implicitWidth)
                             height: Design.controlHeight
                             text: modelData.label
                             iconName: modelData.icon || "applications-other"
@@ -2227,95 +2212,141 @@ PlasmaCore.Dialog {
                                 categoryFilters.positionViewAtIndex(index, ListView.Contain);
                             }
                             onClicked: activate()
-                            Keys.onLeftPressed: {
+                            Keys.onReturnPressed: activate()
+                            Keys.onEnterPressed: activate()
+                            Keys.onUpPressed: {
                                 categoryFilters.currentIndex = Math.max(0, index - 1);
                                 categoryFilters.positionViewAtIndex(categoryFilters.currentIndex, ListView.Contain);
                                 if (categoryFilters.currentItem) categoryFilters.currentItem.forceActiveFocus();
                             }
-                            Keys.onRightPressed: {
+                            Keys.onDownPressed: {
                                 categoryFilters.currentIndex = Math.min(categoryFilters.count - 1, index + 1);
                                 categoryFilters.positionViewAtIndex(categoryFilters.currentIndex, ListView.Contain);
                                 if (categoryFilters.currentItem) categoryFilters.currentItem.forceActiveFocus();
                             }
-                            Keys.onDownPressed: allAppsGrid.tryActivate(0, 0)
+                            Keys.onRightPressed: allAppsGrid.tryActivate(0, 0)
                         }
 
                     }
-                    LauncherButton {
-                        id: categoryDropButton
-                        objectName: "categoryDropdownButton"
-                        anchors.right: parent.right
-                        y: categoryControls.recentAppsStripHeight
-                        text: rootItem.activeCategoryRow < 0 ? i18n("All categories") : rootItem.activeCategoryName
-                        iconName: "view-filter"
-                        showLabel: rootItem.width >= 560
-                        width: showLabel ? Math.min(170, implicitWidth) : Design.controlHeight
-                        selected: viewModePopup.visible
-                        showNewDot: !!rootItem.categoriesWithNewApps[-1]
-                        onClicked: viewModePopup.visible ? viewModePopup.close() : viewModePopup.openFor(categoryDropButton)
+                    ScrollFades {
+                        x: categoryFilters.x
+                        width: categoryFilters.width - Math.max(Design.space3, categoryScrollBar.implicitWidth)
+                        height: categoryFilters.height
+                        flickable: categoryFilters
                     }
-
-                }
-
-                Item {
-                    id: allAppsGridContainer
-                    readonly property int listInset: 0
-                    readonly property bool gridMode: Plasmoid.configuration.allAppsViewMode === 1
-                    x: gridMode ? 0 : listInset
-                    width: parent.width - (gridMode ? 0 : listInset) * 2
-                    height: rootItem.activeCategoryRow >= 0 && categoryAppsModel.count === 0
-                            ? Math.max(allAppsGrid.cellHeight, emptyCategoryLabel.implicitHeight + Kirigami.Units.gridUnit * 2)
-                            : allAppsGrid.height
-                    visible: Plasmoid.configuration.allAppsViewMode !== 2 || rootItem.activeCategoryRow >= 0
-
-                    Text {
-                        id: emptyCategoryLabel
-                        anchors.centerIn: parent
-                        visible: rootItem.activeCategoryRow >= 0 && categoryAppsModel.count === 0
-                        text: i18n("No applications in this category")
-                        color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.65)
-                    }
-
-                    AppsView {
-                        id: allAppsGrid
-                        objectName: "allAppsGrid"
-                        width: parent.width
-                        viewMode: Plasmoid.configuration.allAppsViewMode === 1 ? 1 : 0
-                        columns: root.colonnesAuto
-                        contextKey: rootItem.activeCategoryRow
-                        iconSize: root.iconSize
-                        labels2lines: Plasmoid.configuration.labels2lines
-                        listModel: rootItem.activeCategoryRow < 0 ? allAppsListModel : categoryAppsModel
-                        gridModel: rootItem.activeCategoryRow < 0 ? allAppsGridModel : categoryAppsModel
-                        viewportHeight: Math.min(height, mainFlick.height)
-                        viewportOffset: Math.max(0, Math.min(height - viewportHeight,
-                                                            mainFlick.contentY - allAppsGridContainer.y))
-                        onWheelUnhandled: delta => mainFlick.scrollBy(delta)
-                        onKeyNavUp: {
-                            allAppsGrid.focus = false;
-                            categoryFilters.currentIndex = 0;
-                            if (categoryFilters.currentItem) categoryFilters.currentItem.forceActiveFocus();
-                            else searchField.focus = true;
+                    Flickable {
+                        id: mainFlick
+                        objectName: "mainFlick"
+                        x: appsBrowser.appsX
+                        width: parent.width - x
+                        height: parent.height
+                        contentWidth: Math.max(0, width - Math.max(Design.space4, mainScrollBar.implicitWidth) - Design.space2)
+                        contentHeight: allAppsGridContainer.visible ? allAppsGridContainer.height : allAppsCategoryGrid.height
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        flickableDirection: Flickable.VerticalFlick
+                        onContentYChanged: rootItem.noteScrolling()
+                        PC3.ScrollBar.vertical: PC3.ScrollBar { id: mainScrollBar }
+                        function scrollBy(delta) {
+                            cancelFlick();
+                            scrollAnim.stop();
+                            letterScrollAnim.stop();
+                            contentY = Math.max(0, Math.min(contentHeight - height, contentY - delta));
                         }
-                        Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Tab) {
-                                event.accepted = true;
-                                searchField.focus = true;
-                                allAppsGrid.focus = false;
+
+                        onContentHeightChanged: contentY = Math.max(0, Math.min(contentY, contentHeight - height))
+
+                        function scrollTo(y) {
+                            cancelFlick();
+                            letterScrollAnim.stop();
+                            var maxY = Math.max(0, contentHeight - height);
+                            scrollAnim.stop();
+                            scrollAnim.to = Math.max(0, Math.min(y, maxY));
+                            scrollAnim.start();
+                        }
+
+                        function ensureVisible(top, bottom) {
+                            var pad = Kirigami.Units.largeSpacing;
+                            var maxY = Math.max(0, contentHeight - height);
+                            if (top - pad < contentY)
+                                contentY = Math.max(0, top - pad);
+                            else if (bottom + pad > contentY + height)
+                                contentY = Math.min(maxY, bottom + pad - height);
+                        }
+
+                        NumberAnimation {
+                            id: scrollAnim
+                            target: mainFlick
+                            property: "contentY"
+                            duration: 220
+                            easing.type: Easing.OutCubic
+                        }
+
+                        Item {
+                            id: allAppsGridContainer
+                            width: mainFlick.contentWidth
+                            height: rootItem.activeCategoryRow >= 0 && categoryAppsModel.count === 0
+                                    ? Math.max(allAppsGrid.cellHeight, emptyCategoryLabel.implicitHeight + Kirigami.Units.gridUnit * 2)
+                                    : allAppsGrid.height
+                            visible: Plasmoid.configuration.allAppsViewMode !== 2 || rootItem.activeCategoryRow >= 0
+
+                            Text {
+                                id: emptyCategoryLabel
+                                anchors.centerIn: parent
+                                visible: rootItem.activeCategoryRow >= 0 && categoryAppsModel.count === 0
+                                text: i18n("No applications in this category")
+                                color: root.colorWithAlpha(Kirigami.Theme.textColor, 0.65)
+                            }
+
+                            AppsView {
+                                id: allAppsGrid
+                                objectName: "allAppsGrid"
+                                width: parent.width
+                                viewMode: Plasmoid.configuration.allAppsViewMode === 1 ? 1 : 0
+                                columns: Math.max(2, Math.min(root.colonnesAuto, Math.floor(width / 85)))
+                                contextKey: rootItem.activeCategoryRow
+                                iconSize: root.iconSize
+                                labels2lines: Plasmoid.configuration.labels2lines
+                                listModel: rootItem.activeCategoryRow < 0 ? allAppsListModel : categoryAppsModel
+                                gridModel: rootItem.activeCategoryRow < 0 ? allAppsGridModel : categoryAppsModel
+                                viewportHeight: Math.min(height, mainFlick.height)
+                                viewportOffset: Math.max(0, Math.min(height - viewportHeight,
+                                                                    mainFlick.contentY))
+                                onWheelUnhandled: delta => mainFlick.scrollBy(delta)
+                                onKeyNavUp: {
+                                    allAppsGrid.focus = false;
+                                    categoryFilters.currentIndex = 0;
+                                    if (categoryFilters.currentItem) categoryFilters.currentItem.forceActiveFocus();
+                                    else searchField.focus = true;
+                                }
+                                Keys.onPressed: event => {
+                                    if (event.key === Qt.Key_Tab) {
+                                        event.accepted = true;
+                                        searchField.focus = true;
+                                        allAppsGrid.focus = false;
+                                    }
+                                }
                             }
                         }
-                    }
-                }
 
-                CategoryTiles {
-                    id: allAppsCategoryGrid
-                    visible: Plasmoid.configuration.allAppsViewMode === 2 && rootItem.activeCategoryRow < 0
-                    height: visible ? implicitHeight : 0
-                    x: rootItem.sectionInset
-                    width: parent.width - rootItem.sectionInset * 2
-                    flyoutOpen: categoryFlyout.visible
-                    onOpenCategory: (row, title, sx, sy) => categoryFlyout.openFor(row, title, sx, sy)
-                }
+                        CategoryTiles {
+                            id: allAppsCategoryGrid
+                            visible: Plasmoid.configuration.allAppsViewMode === 2 && rootItem.activeCategoryRow < 0
+                            height: visible ? implicitHeight : 0
+                            width: mainFlick.contentWidth
+                            flyoutOpen: categoryFlyout.visible
+                            onOpenCategory: (row, title, sx, sy) => categoryFlyout.openFor(row, title, sx, sy)
+                        }
+
+                    } // application viewport
+
+                    ScrollFades {
+                        x: mainFlick.x
+                        width: mainFlick.contentWidth
+                        height: mainFlick.height
+                        flickable: mainFlick
+                    }
+                } // appsBrowser
 
                 Item { width: 1; height: Kirigami.Units.largeSpacing }
                 } // fin mainColumn
@@ -2326,19 +2357,11 @@ PlasmaCore.Dialog {
                     function onCurrentIndexChanged() {
                         if (allAppsGrid.currentIndex < 0 || !rootItem.keyNavRecently()) return;
                         var row = Math.floor(allAppsGrid.currentIndex / allAppsGrid.columnsCount);
-                        var top = allAppsGridContainer.y + row * allAppsGrid.cellHeight;
+                        var top = row * allAppsGrid.cellHeight;
                         mainFlick.ensureVisible(top, top + allAppsGrid.cellHeight);
                     }
                 }
-            // la page suit aussi la sélection clavier quand on remonte vers les recommandations / les épinglés
-                Connections {
-                    target: globalFavoritesGrid
-                    function onCurrentIndexChanged() {
-                        if (globalFavoritesGrid.currentIndex < 0 || !rootItem.keyNavRecently()) return;
-                        mainFlick.ensureVisible(0, globalFavoritesGrid.y + globalFavoritesGrid.height);
-                    }
-                }
-            } // fin mainFlick
+            } // homePage
 
 
             // PAGE 3 — Search Results
@@ -2797,9 +2820,12 @@ PlasmaCore.Dialog {
 
         }
 
-        // Handle wheel input in viewport coordinates, above app delegates.
+        // Only the application viewport receives wheel scrolling.
         Item {
-            anchors.fill: view
+            parent: appsBrowser
+            x: mainFlick.x
+            width: mainFlick.width
+            height: mainFlick.height
             visible: view.currentIndex === 0
             z: 1
             WheelHandler {
@@ -2807,7 +2833,7 @@ PlasmaCore.Dialog {
                 acceptedDevices: PointerDevice.AllDevices
                 onWheel: event => {
                     var delta = event.pixelDelta.y !== 0 ? event.pixelDelta.y
-                              : event.angleDelta.y / 120 * Kirigami.Units.gridUnit * 3;
+                              : event.angleDelta.y / 120 * Design.wheelStep;
                     if (delta !== 0) {
                         mainFlick.scrollBy(delta);
                         event.accepted = true;
@@ -2816,15 +2842,6 @@ PlasmaCore.Dialog {
                     }
                 }
             }
-        }
-
-        CategoryDropdown {
-            id: viewModePopup
-            parent: rootItem
-            categories: rootItem.availableCategories
-            newCategories: rootItem.categoriesWithNewApps
-            selectedRow: rootItem.activeCategoryRow
-            onCategoryChosen: row => rootItem.selectCategory(row)
         }
 
         // ── Fenêtre d'une catégorie (clic sur le paquet de mini-icônes ou sur le fond d'une tuile) ──
@@ -4143,7 +4160,7 @@ PlasmaCore.Dialog {
             if (event.modifiers === Qt.ControlModifier) {
                 var digit = event.key - Qt.Key_1;
                 if (digit >= 0 && digit <= 8) {
-                    var perPage = root.colonnesAuto * Plasmoid.configuration.numberRows;
+                    var perPage = rootItem.pinnedItemsPerPage;
                     var appIdx = rootItem.pinnedCurrentPage * perPage + digit;
                     if (appIdx < globalFavorites.count) {
                         event.accepted = true;
@@ -4183,8 +4200,6 @@ PlasmaCore.Dialog {
                 event.accepted = true;
                 if (categoryFlyout.visible) {
                         categoryFlyout.close();
-                    } else if (viewModePopup.visible) {
-                        viewModePopup.visible = false;
                     } else if (root.searching) {
                     reset();
                 } else {
@@ -4266,7 +4281,7 @@ PlasmaCore.Dialog {
         if (targetIndex < 0) return;
 
         var columns = Math.max(1, Math.floor(allAppsGrid.width / allAppsGrid.cellWidth));
-        var targetY = allAppsGridContainer.y + Math.floor(targetIndex / columns) * allAppsGrid.cellHeight;
+        var targetY = Math.floor(targetIndex / columns) * allAppsGrid.cellHeight;
         var maxY = Math.max(0, mainFlick.contentHeight - mainFlick.height);
         targetY = Math.min(targetY, maxY);
 

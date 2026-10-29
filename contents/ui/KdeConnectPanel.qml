@@ -329,7 +329,7 @@ PlasmaCore.Dialog {
     property string notifReplying: ""  // id de la notification à laquelle on répond
     readonly property bool hasNotifPlugin: online && dev.plugins.indexOf("kdeconnect_notifications") >= 0
 
-    readonly property string lecteurNotifs: "import json, subprocess, sys\nbase = \"/modules/kdeconnect/devices/\" + sys.argv[1] + \"/notifications\"\ndef call(path, iface, method, *args):\n    try:\n        r = subprocess.run([\"busctl\", \"--user\", \"--json=short\", \"call\", \"org.kde.kdeconnect\",\n                            path, iface, method] + list(args), capture_output=True, text=True, timeout=5)\n        return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None\n    except Exception:\n        return None\nr = call(base, \"org.kde.kdeconnect.device.notifications\", \"activeNotifications\")\nids = r[\"data\"][0] if r else []\nout = []\nfor i in ids:\n    g = call(base + \"/\" + i, \"org.freedesktop.DBus.Properties\", \"GetAll\", \"s\",\n             \"org.kde.kdeconnect.device.notifications.notification\")\n    if not g:\n        continue\n    p = {k: v.get(\"data\") for k, v in g[\"data\"][0].items()}\n    if not p.get(\"dismissable\"):\n        continue\n    out.append({\"id\": i, \"app\": p.get(\"appName\") or \"\", \"title\": p.get(\"title\") or \"\",\n                \"text\": p.get(\"text\") or \"\", \"reply\": p.get(\"replyId\") or \"\",\n                \"icon\": (p.get(\"iconPath\") or \"\") if p.get(\"hasIcon\") else \"\"})\nout.sort(key=lambda n: int(n[\"id\"]) if n[\"id\"].isdigit() else 0, reverse=True)\nprint(json.dumps(out))\n"
+    readonly property string lecteurNotifs: "import json, subprocess, sys\nbase = \"/modules/kdeconnect/devices/\" + sys.argv[1] + \"/notifications\"\ndef call(path, iface, method, *args):\n    try:\n        r = subprocess.run([\"busctl\", \"--user\", \"--json=short\", \"call\", \"org.kde.kdeconnect\",\n                            path, iface, method] + list(args), capture_output=True, text=True, timeout=5)\n        return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None\n    except Exception:\n        return None\nr = call(base, \"org.kde.kdeconnect.device.notifications\", \"activeNotifications\")\nids = r[\"data\"][0] if r else []\nout = []\nfor i in ids:\n    g = call(base + \"/\" + i, \"org.freedesktop.DBus.Properties\", \"GetAll\", \"s\",\n             \"org.kde.kdeconnect.device.notifications.notification\")\n    if not g:\n        continue\n    p = {k: v.get(\"data\") for k, v in g[\"data\"][0].items()}\n    out.append({\"id\": i, \"dismissable\": bool(p.get(\"dismissable\")), \"app\": p.get(\"appName\") or \"\", \"title\": p.get(\"title\") or \"\",\n                \"text\": p.get(\"text\") or \"\", \"reply\": p.get(\"replyId\") or \"\",\n                \"icon\": (p.get(\"iconPath\") or \"\") if p.get(\"hasIcon\") else \"\"})\nout.sort(key=lambda n: int(n[\"id\"]) if n[\"id\"].isdigit() else 0, reverse=True)\nprint(json.dumps(out))\n"
 
     function refreshNotifs() {
         if (!hasNotifPlugin) { notifs = []; return; }
@@ -347,6 +347,8 @@ PlasmaCore.Dialog {
 
     // retirer = balayer la notification : le message lui-même n'est pas supprimé
     function dismissNotif(id) {
+        var notification = notifs.find(function (entry) { return entry.id === id; });
+        if (!notification || notification.dismissable === false) return;
         var command = core !== null ? core.cmdDismissNotification(dev.id, id) : "";
         if (command !== "") run(command); else notifCall(id, "dismiss");
         notifs = notifs.filter(function (n) { return n.id !== id; });
@@ -354,8 +356,8 @@ PlasmaCore.Dialog {
     }
 
     function dismissAllNotifs() {
-        for (var k = 0; k < notifs.length; k++) dismissNotif(notifs[k].id);
-        notifs = [];
+        var pending = notifs.slice();
+        for (var k = 0; k < pending.length; k++) dismissNotif(pending[k].id);
         notifReplying = "";
     }
 
@@ -1526,131 +1528,145 @@ PlasmaCore.Dialog {
                 visible: panel.notifs.length > 0
                 Text {
                     Layout.fillWidth: true
-                    text: i18n("Recent notifications")
+                    text: i18n("Notifications")
                     font.weight: Font.DemiBold
                     color: Kirigami.Theme.textColor
                 }
             }
-            // les 3 plus récentes au plus (le volet est un complément), et seulement
-            // celles qui tiennent entièrement dans la place restante (carte musique…)
+            // Every mirrored notification remains reachable in its own viewport.
             Item {
                 id: notifZone
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 visible: panel.notifs.length > 0
                 clip: true
-                Column {
-                id: notifList
-                width: parent.width
-                spacing: 2
-                Repeater {
-                model: panel.notifs.slice(0, 3)
+                Flickable {
+                    id: notificationViewport
+                    objectName: "notificationViewport"
+                    anchors.fill: parent
+                    contentWidth: Math.max(0, width - notificationScrollBar.implicitWidth - Design.space2)
+                    contentHeight: notifList.implicitHeight
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    flickableDirection: Flickable.VerticalFlick
+                    PC3.ScrollBar.vertical: PC3.ScrollBar { id: notificationScrollBar }
+                    Column {
+                        id: notifList
+                        width: notificationViewport.contentWidth
+                        spacing: 2
+                        Repeater {
+                            model: panel.notifs
 
-                delegate: Item {
-                    id: nt
-                    required property var modelData
-                    width: notifList.width
-                    // masquée si elle ne tient pas entièrement (pas de notification coupée)
-                    readonly property bool tient: y + height <= notifZone.height
-                    opacity: tient ? 1 : 0
-                    enabled: tient
-                    implicitHeight: ntCol.implicitHeight + Kirigami.Units.smallSpacing * 2
-                    readonly property bool enReponse: panel.notifReplying === nt.modelData.id
+                            delegate: Item {
+                                id: nt
+                                required property var modelData
+                                width: notifList.width
+                                objectName: "notification_" + modelData.id
+                                implicitHeight: ntCol.implicitHeight + Kirigami.Units.smallSpacing * 2
+                                readonly property bool enReponse: panel.notifReplying === nt.modelData.id
 
-                    HoverHandler { id: ntHover }
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: 5
-                        color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff")
-                        border.width: 1
-                        border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
-                        opacity: ntHover.hovered || nt.enReponse ? 1.0 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: 100 } }
-                    }
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.smallSpacing
-                        spacing: Kirigami.Units.smallSpacing
+                                HoverHandler { id: ntHover }
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 5
+                                    color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#26ffffff" : "#80ffffff")
+                                    border.width: 1
+                                    border.color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? "#1affffff" : "#14000000")
+                                    opacity: ntHover.hovered || nt.enReponse ? 1.0 : 0.0
+                                    Behavior on opacity { NumberAnimation { duration: 100 } }
+                                }
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: Kirigami.Units.smallSpacing
+                                    spacing: Kirigami.Units.smallSpacing
 
-                        Image {   // icône de l'application
-                            Layout.alignment: Qt.AlignTop
-                            Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
-                            Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
-                            source: nt.modelData.icon !== "" ? "file://" + nt.modelData.icon : ""
-                            sourceSize.width: Kirigami.Units.iconSizes.smallMedium * 2
-                            sourceSize.height: Kirigami.Units.iconSizes.smallMedium * 2
-                            fillMode: Image.PreserveAspectFit
-                            smooth: true
-                        }
-                        ColumnLayout {
-                            id: ntCol
-                            Layout.fillWidth: true
-                            Layout.alignment: Qt.AlignTop
-                            spacing: 0
-                            Text {
-                                Layout.fillWidth: true
-                                elide: Text.ElideRight
-                                text: nt.modelData.app
-                                font.pointSize: Kirigami.Theme.smallFont.pointSize
-                                color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.7) : "#4A4A4A")
-                            }
-                            Text {
-                                Layout.fillWidth: true
-                                visible: text !== ""
-                                elide: Text.ElideRight
-                                text: nt.modelData.title
-                                font.weight: Font.DemiBold
-                                color: Kirigami.Theme.textColor
-                            }
-                            Text {
-                                Layout.fillWidth: true
-                                visible: text !== ""
-                                wrapMode: Text.Wrap
-                                maximumLineCount: nt.enReponse ? 8 : 3
-                                elide: Text.ElideRight
-                                text: nt.modelData.text
-                                color: Kirigami.Theme.textColor
-                            }
-                            PanelButton {   // répondre (messageries, SMS…)
-                                visible: nt.modelData.reply !== "" && !nt.enReponse
-                                framed: false
-                                text: i18n("Reply")
-                                iconName: panel.ico("sms")
-                                onClicked: {
-                                    panel.notifReplying = nt.modelData.id;
-                                    Qt.callLater(function () { ntReponse.forceActiveFocus(); });
+                                    Image {   // icône de l'application
+                                        Layout.alignment: Qt.AlignTop
+                                        Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
+                                        Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
+                                        source: nt.modelData.icon !== "" ? "file://" + nt.modelData.icon : ""
+                                        sourceSize.width: Kirigami.Units.iconSizes.smallMedium * 2
+                                        sourceSize.height: Kirigami.Units.iconSizes.smallMedium * 2
+                                        fillMode: Image.PreserveAspectFit
+                                        smooth: true
+                                    }
+                                    ColumnLayout {
+                                        id: ntCol
+                                        Layout.fillWidth: true
+                                        Layout.alignment: Qt.AlignTop
+                                        spacing: 0
+                                        Text {
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideRight
+                                            text: nt.modelData.app
+                                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                                            color: (Kirigami.Theme.textColor.hslLightness > 0.5 ? Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.7) : "#4A4A4A")
+                                        }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            visible: text !== ""
+                                            elide: Text.ElideRight
+                                            text: nt.modelData.title
+                                            font.weight: Font.DemiBold
+                                            color: Kirigami.Theme.textColor
+                                        }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            visible: text !== ""
+                                            wrapMode: Text.Wrap
+                                            maximumLineCount: nt.enReponse ? 8 : 3
+                                            elide: Text.ElideRight
+                                            text: nt.modelData.text
+                                            color: Kirigami.Theme.textColor
+                                        }
+                                        PanelButton {   // répondre (messageries, SMS…)
+                                            visible: nt.modelData.reply !== "" && !nt.enReponse
+                                            framed: false
+                                            text: i18n("Reply")
+                                            iconName: panel.ico("sms")
+                                            onClicked: {
+                                                panel.notifReplying = nt.modelData.id;
+                                                Qt.callLater(function () { ntReponse.forceActiveFocus(); });
+                                            }
+                                        }
+                                        RowLayout {     // champ de réponse
+                                            Layout.fillWidth: true
+                                            visible: nt.enReponse
+                                            PC3.TextField {
+                                                id: ntReponse
+                                                Layout.fillWidth: true
+                                                placeholderText: i18n("Your reply")
+                                                onAccepted: if (panel.replyNotif(nt.modelData.id, text)) text = ""
+                                                Keys.onEscapePressed: panel.notifReplying = ""
+                                            }
+                                            PanelButton {
+                                                iconName: panel.ico("send")
+                                                implicitWidth: implicitHeight
+                                                onClicked: if (panel.replyNotif(nt.modelData.id, ntReponse.text)) ntReponse.text = ""
+                                            }
+                                        }
+                                    }
+                                    PanelButton {   // retirer (le message n'est pas supprimé)
+                                        visible: nt.modelData.dismissable !== false
+                                        Layout.alignment: Qt.AlignTop
+                                        framed: false
+                                        text: "✕"
+                                        implicitWidth: implicitHeight
+                                        onClicked: panel.dismissNotif(nt.modelData.id)
+                                        PC3.ToolTip.text: i18n("Dismiss notification")
+                                        PC3.ToolTip.visible: hovered
+                                        PC3.ToolTip.delay: 400
+                                    }
                                 }
                             }
-                            RowLayout {     // champ de réponse
-                                Layout.fillWidth: true
-                                visible: nt.enReponse
-                                PC3.TextField {
-                                    id: ntReponse
-                                    Layout.fillWidth: true
-                                    placeholderText: i18n("Your reply")
-                                    onAccepted: if (panel.replyNotif(nt.modelData.id, text)) text = ""
-                                    Keys.onEscapePressed: panel.notifReplying = ""
-                                }
-                                PanelButton {
-                                    iconName: panel.ico("send")
-                                    implicitWidth: implicitHeight
-                                    onClicked: if (panel.replyNotif(nt.modelData.id, ntReponse.text)) ntReponse.text = ""
-                                }
-                            }
-                        }
-                        PanelButton {   // retirer (le message n'est pas supprimé)
-                            Layout.alignment: Qt.AlignTop
-                            framed: false
-                            text: "✕"
-                            implicitWidth: implicitHeight
-                            onClicked: panel.dismissNotif(nt.modelData.id)
-                            PC3.ToolTip.text: i18n("Dismiss notification")
-                            PC3.ToolTip.visible: hovered
-                            PC3.ToolTip.delay: 400
                         }
                     }
                 }
-                }
+                ScrollFades {
+                    width: notificationViewport.contentWidth
+                    height: notificationViewport.height
+                    flickable: notificationViewport
+                    surface: Kirigami.Theme.backgroundColor
                 }
             }
 

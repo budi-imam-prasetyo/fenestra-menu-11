@@ -65,7 +65,7 @@ assert.equal(env.availableCategories.map(x => x.label).join(','), 'All apps,Game
 env.selectCategory(0);
 assert.equal(categoryAppsModel.rows.map(x => x.favoriteId).join(','), 'game.desktop,work.desktop');
 assert.equal(env.allAppsGrid.currentIndex, -1);
-assert.equal(env.mainFlick.contentY, 40);
+assert.equal(env.mainFlick.contentY, 0);
 env.selectCategory(1);
 assert.equal(categoryAppsModel.rows.map(x => x.favoriteId).join(','), 'work.desktop', 'multi-category membership');
 assert.equal(categoryAppsModel.rows[0].sourceRow, 1, 'launch row retained');

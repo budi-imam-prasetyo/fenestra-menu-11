@@ -114,6 +114,7 @@ Item {
         font.pointSize: Design.smallFontSize
     }
     Rectangle {
+        objectName: "applicationNewDot_" + item.favoriteId
         visible: item.isNewTag
         x: parent.width - width - Design.space2
         y: Design.space2

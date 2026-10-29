@@ -29,8 +29,10 @@ PC3.ToolButton {
         spacing: Design.space2
         Kirigami.Icon {
             visible: control.iconName.length > 0
-            source: control.iconName
-            fallback: "application-x-executable"
+            source: Design.iconSource(control.iconName)
+            fallback: control.iconName
+            isMask: source.toString().indexOf("/icons/navigation/") >= 0
+            color: Design.text
             Layout.preferredWidth: Design.smallIcon
             Layout.preferredHeight: Design.smallIcon
             animated: false
@@ -51,16 +53,16 @@ PC3.ToolButton {
         border.width: control.visualFocus ? 2 : 1
         border.color: control.visualFocus ? Design.focus
                       : control.selected ? Design.alpha(Design.accent, 0.35) : "transparent"
-        Rectangle {
-            objectName: control.newDotObjectName
-            visible: control.showNewDot
-            anchors.top: parent.top
-            anchors.right: parent.right
-            anchors.margins: Design.space2
-            width: 6
-            height: width
-            radius: width / 2
-            color: Design.accent
-        }
+    }
+    Rectangle {
+        objectName: control.newDotObjectName
+        visible: control.showNewDot
+        anchors.top: control.top
+        anchors.right: control.right
+        anchors.margins: Design.space2
+        width: 6
+        height: width
+        radius: width / 2
+        color: Design.accent
     }
 }

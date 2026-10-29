@@ -205,11 +205,10 @@ KCM.SimpleKCM {
 
         SpinBox{
             id: numberColumns
-            enabled: false   // Fenestra : colonnes automatiques (6 / 7 / 8 selon l'écran)
 
             from: 3
             to: 15
-            Kirigami.FormData.label: i18n("Number of columns")
+            Kirigami.FormData.label: i18n("Pinned app columns")
 
         }
 
@@ -217,7 +216,7 @@ KCM.SimpleKCM {
             id: numberRows
             from: 1
             to: 15
-            Kirigami.FormData.label: i18n("Number of rows")
+            Kirigami.FormData.label: i18n("Pinned app rows")
         }
 
         Item {

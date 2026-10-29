@@ -32,6 +32,25 @@ QtObject {
     readonly property color focus: accent
     readonly property color disabled: Kirigami.Theme.disabledTextColor
 
+    // Three readable list rows per wheel notch; touchpad pixel deltas stay native.
+    readonly property real wheelStep: rowHeight(32) * 3
+
+    function iconSource(name) {
+        var icons = {
+            "view-list-details": "list", "view-grid": "grid", "view-list-icons": "categories",
+            "view-filter": "filter", "applications-all": "apps", "applications-other": "apps",
+            "applications-development": "development", "applications-education": "education",
+            "applications-engineering": "science", "applications-science": "science",
+            "applications-games": "games", "applications-graphics": "graphics",
+            "applications-internet": "internet", "applications-multimedia": "multimedia",
+            "applications-office": "office", "applications-system": "system",
+            "applications-utilities": "utilities", "applications-accessories": "utilities",
+            "applications-settings": "settings", "preferences-desktop": "settings"
+        };
+        var key = name.replace(/-symbolic$/, "");
+        return icons[key] ? Qt.resolvedUrl("../icons/navigation/" + icons[key] + ".svg").toString() : name;
+    }
+
     function alpha(value, opacity) { return Qt.rgba(value.r, value.g, value.b, opacity); }
     function tileHeight(iconSize) { return Math.ceil(iconSize + fontPixels * 2.4 + space3 * 2 + space2); }
     function rowHeight(iconSize) { return Math.max(48, Math.ceil(iconSize + space3 * 2), Math.ceil(fontPixels * 2.2 + space2 * 2)); }

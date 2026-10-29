@@ -91,6 +91,7 @@ FocusScope {
             viewportOffset: listLoader.visible ? Math.min(height - viewportHeight, appsView.viewportOffset) : savedOffset
             onViewportOffsetChanged: if (listLoader.visible) savedOffset = viewportOffset
             scrollEnabled: false
+            showNewTag: true
             dragEnabled: true
             dropEnabled: false
             clip: true
@@ -116,6 +117,7 @@ FocusScope {
             viewportOffset: gridLoader.visible ? Math.min(height - viewportHeight, appsView.viewportOffset) : savedOffset
             onViewportOffsetChanged: if (gridLoader.visible) savedOffset = viewportOffset
             scrollEnabled: false
+            showNewTag: true
             dragEnabled: true
             dropEnabled: false
             clip: true
